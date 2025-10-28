@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import { StudentLayout } from '../StudentLayout';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -22,6 +23,15 @@ vi.mock('@/shared/lib/supabase', () => ({
   }
 }));
 
+// Helper to render with router
+const renderWithRouter = (component: React.ReactElement) => {
+  return render(
+    <MemoryRouter initialEntries={['/student/levels']}>
+      {component}
+    </MemoryRouter>
+  );
+};
+
 describe('StudentLayout', () => {
   beforeEach(() => {
     // Set up student user
@@ -41,7 +51,7 @@ describe('StudentLayout', () => {
   });
 
   it('should render children content', () => {
-    render(
+    renderWithRouter(
       <StudentLayout>
         <div>Test Content</div>
       </StudentLayout>
@@ -51,7 +61,7 @@ describe('StudentLayout', () => {
   });
 
   it('should display student name in header', () => {
-    render(
+    renderWithRouter(
       <StudentLayout>
         <div>Content</div>
       </StudentLayout>
@@ -61,7 +71,7 @@ describe('StudentLayout', () => {
   });
 
   it('should display student class in header', () => {
-    render(
+    renderWithRouter(
       <StudentLayout>
         <div>Content</div>
       </StudentLayout>
@@ -71,7 +81,7 @@ describe('StudentLayout', () => {
   });
 
   it('should render navigation links', () => {
-    render(
+    renderWithRouter(
       <StudentLayout>
         <div>Content</div>
       </StudentLayout>
@@ -83,7 +93,7 @@ describe('StudentLayout', () => {
   });
 
   it('should render logout button', () => {
-    render(
+    renderWithRouter(
       <StudentLayout>
         <div>Content</div>
       </StudentLayout>
@@ -97,7 +107,7 @@ describe('StudentLayout', () => {
 
     const user = userEvent.setup();
 
-    render(
+    renderWithRouter(
       <StudentLayout>
         <div>Content</div>
       </StudentLayout>
@@ -109,7 +119,7 @@ describe('StudentLayout', () => {
   });
 
   it('should display Sarpedon logo', () => {
-    render(
+    renderWithRouter(
       <StudentLayout>
         <div>Content</div>
       </StudentLayout>
@@ -119,7 +129,7 @@ describe('StudentLayout', () => {
   });
 
   it('should have proper layout structure', () => {
-    const { container } = render(
+    const { container } = renderWithRouter(
       <StudentLayout>
         <div data-testid="main-content">Content</div>
       </StudentLayout>

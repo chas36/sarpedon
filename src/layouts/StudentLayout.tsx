@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Button } from '@/shared/components/ui';
@@ -10,6 +11,7 @@ interface StudentLayoutProps {
 export function StudentLayout({ children }: StudentLayoutProps) {
   const { profile } = useAuthStore();
   const { handleLogout } = useAuth();
+  const location = useLocation();
 
   const onLogout = async () => {
     try {
@@ -62,24 +64,36 @@ export function StudentLayout({ children }: StudentLayoutProps) {
       <nav className="bg-learning-surface border-b border-learning-muted/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-8 h-12 items-center">
-            <a
-              href="#"
-              className="text-sm font-medium text-learning-text hover:text-learning-accent transition-colors"
+            <Link
+              to="/student/levels"
+              className={`text-sm font-medium transition-colors ${
+                location.pathname === '/student/levels'
+                  ? 'text-learning-accent border-b-2 border-learning-accent'
+                  : 'text-learning-text hover:text-learning-accent'
+              }`}
             >
               Уровни
-            </a>
-            <a
-              href="#"
-              className="text-sm font-medium text-learning-text hover:text-learning-accent transition-colors"
+            </Link>
+            <Link
+              to="/student/progress"
+              className={`text-sm font-medium transition-colors ${
+                location.pathname === '/student/progress'
+                  ? 'text-learning-accent border-b-2 border-learning-accent'
+                  : 'text-learning-text hover:text-learning-accent'
+              }`}
             >
               Мой прогресс
-            </a>
-            <a
-              href="#"
-              className="text-sm font-medium text-learning-text hover:text-learning-accent transition-colors"
+            </Link>
+            <Link
+              to="/student/competitions"
+              className={`text-sm font-medium transition-colors ${
+                location.pathname === '/student/competitions'
+                  ? 'text-learning-accent border-b-2 border-learning-accent'
+                  : 'text-learning-text hover:text-learning-accent'
+              }`}
             >
               Соревнования
-            </a>
+            </Link>
           </div>
         </div>
       </nav>
