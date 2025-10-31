@@ -28,7 +28,12 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center space-x-3">
-              <div className="text-2xl font-bold text-admin-accent">
+              <img
+                src="/logo.png"
+                alt="Sarpedon"
+                className="h-8 w-8"
+              />
+              <div className="text-xl font-bold text-admin-text">
                 Sarpedon
               </div>
               <div className="text-sm text-admin-muted hidden sm:block">

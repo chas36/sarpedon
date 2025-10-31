@@ -19,7 +19,14 @@ export function LoginPage() {
       <div className="max-w-md w-full space-y-8">
         {/* Logo/Branding */}
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-learning-accent mb-2">
+          <div className="flex justify-center mb-4">
+            <img
+              src="/logo.png"
+              alt="Sarpedon"
+              className="h-20 w-20"
+            />
+          </div>
+          <h1 className="text-4xl font-bold text-learning-text mb-2">
             Sarpedon
           </h1>
           <h2 className="text-2xl font-semibold text-learning-text">
