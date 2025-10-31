@@ -2,20 +2,26 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Spinner, CodeEditor } from '@/shared/components/ui';
 import { getLevelById } from '../api/levelsApi';
+import { createSubmission, getLatestSubmission } from '../api/submissionsApi';
+import { useAuthStore } from '@/features/auth/store/authStore';
 import type { Level } from '@/shared/types';
 
 export function SolveLevelPage() {
   const { levelId } = useParams<{ levelId: string }>();
+  const { user } = useAuthStore();
   const [level, setLevel] = useState<Level | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [code, setCode] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
   useEffect(() => {
-    if (levelId) {
+    if (levelId && user) {
       loadLevel(levelId);
+      loadLastSubmission(levelId, user.id);
     }
-  }, [levelId]);
+  }, [levelId, user]);
 
   const loadLevel = async (id: string) => {
     try {
@@ -32,6 +38,39 @@ export function SolveLevelPage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadLastSubmission = async (lid: string, uid: string) => {
+    try {
+      const lastSubmission = await getLatestSubmission(uid, lid);
+      if (lastSubmission) {
+        setCode(lastSubmission.code);
+      }
+    } catch (err) {
+      // Ignore error - just means no previous submission
+      console.log('No previous submission found');
+    }
+  };
+
+  const handleSaveCode = async () => {
+    if (!levelId || !code.trim()) return;
+
+    try {
+      setSaving(true);
+      setSaveStatus('idle');
+      await createSubmission({
+        level_id: levelId,
+        code: code.trim(),
+        status: 'pending'
+      });
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch (err) {
+      setSaveStatus('error');
+      console.error('Failed to save submission:', err);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -164,12 +203,31 @@ export function SolveLevelPage() {
 
       {/* Actions */}
       <div className="flex items-center justify-between">
-        <button
-          disabled={!code.trim()}
-          className="px-6 py-3 bg-learning-accent text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-        >
-          Запустить код
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            disabled={!code.trim()}
+            className="px-6 py-3 bg-learning-accent text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+          >
+            Запустить код
+          </button>
+          <button
+            onClick={handleSaveCode}
+            disabled={saving || !code.trim()}
+            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+          >
+            {saving ? 'Сохранение...' : 'Сохранить'}
+          </button>
+        </div>
+        {saveStatus === 'saved' && (
+          <div className="text-sm text-green-400">
+            ✓ Код сохранен
+          </div>
+        )}
+        {saveStatus === 'error' && (
+          <div className="text-sm text-red-400">
+            ✗ Ошибка сохранения
+          </div>
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import { SolveLevelPage } from '../SolveLevelPage';
 import * as levelsApi from '../../api/levelsApi';
+import * as submissionsApi from '../../api/submissionsApi';
 
 // Mock environment variables
 vi.stubEnv('VITE_SUPABASE_URL', 'https://test.supabase.co');
@@ -11,11 +12,24 @@ vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'test-key');
 
 // Mock API
 vi.mock('../../api/levelsApi');
+vi.mock('../../api/submissionsApi');
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
     auth: { getUser: vi.fn() },
     from: vi.fn()
   }
+}));
+
+// Mock auth store
+const mockAuthStore = {
+  user: { id: 'test-user-id', email: 'test@example.com' },
+  isAuthenticated: true,
+  setUser: vi.fn(),
+  clearUser: vi.fn()
+};
+
+vi.mock('@/features/auth/store/authStore', () => ({
+  useAuthStore: vi.fn(() => mockAuthStore)
 }));
 
 const mockLevel = {
@@ -50,6 +64,19 @@ const renderWithRouter = (levelId: string = 'level-1') => {
 describe('SolveLevelPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Setup default mocks for submissionsApi
+    vi.mocked(submissionsApi.getLatestSubmission).mockResolvedValue(null);
+    vi.mocked(submissionsApi.createSubmission).mockResolvedValue({
+      id: 'sub-123',
+      user_id: 'test-user-id',
+      level_id: 'level-1',
+      code: 'test code',
+      status: 'pending',
+      submitted_at: new Date().toISOString(),
+      completed_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
   });
 
   it('should display loading state initially', () => {
