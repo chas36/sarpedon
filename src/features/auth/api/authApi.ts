@@ -2,9 +2,11 @@ import { supabase } from '@/shared/lib/supabase';
 import type { LoginCredentials } from '@/shared/types';
 
 export async function login(credentials: LoginCredentials) {
-  // For now, we use email/password auth
-  // Later we'll map generated_login to email
-  const email = `${credentials.login}@sarpedon.local`;
+  // Check if login is already an email (contains @)
+  // If yes, use it directly. If not, append @sarpedon.local
+  const email = credentials.login.includes('@')
+    ? credentials.login
+    : `${credentials.login}@sarpedon.local`;
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
