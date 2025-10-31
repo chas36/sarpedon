@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage } from './features/auth/pages/LoginPage';
 import { RoleGuard } from './shared/components/guards/RoleGuard';
@@ -5,6 +6,8 @@ import { StudentLayout } from './layouts/StudentLayout';
 import { TeacherLayout } from './layouts/TeacherLayout';
 import { LevelsListPage, SolveLevelPage, ProgressPage } from './features/learning/pages';
 import { useAuthStore } from './features/auth/store/authStore';
+import { getCurrentUser, getProfile } from './features/auth/api/authApi';
+import { Spinner } from './shared/components/ui';
 
 // Placeholder components for routes (will be implemented in future tasks)
 function StudentDashboard() {
@@ -16,7 +19,42 @@ function TeacherDashboard() {
 }
 
 function App() {
-  const { user } = useAuthStore();
+  const { user, setUser, setProfile } = useAuthStore();
+  const [initializing, setInitializing] = useState(true);
+
+  // Восстановить сессию при загрузке приложения
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+
+        if (currentUser) {
+          // Получить профиль пользователя
+          const userProfile = await getProfile(currentUser.id);
+
+          // Обновить store
+          setUser(currentUser);
+          setProfile(userProfile);
+        }
+      } catch (error) {
+        // Сессия не найдена или истекла - это нормально
+        console.log('No active session');
+      } finally {
+        setInitializing(false);
+      }
+    };
+
+    restoreSession();
+  }, [setUser, setProfile]);
+
+  // Показать загрузку пока инициализируемся
+  if (initializing) {
+    return (
+      <div className="min-h-screen bg-learning-bg flex items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <BrowserRouter>

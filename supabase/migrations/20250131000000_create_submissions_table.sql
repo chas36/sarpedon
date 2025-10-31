@@ -34,7 +34,7 @@ CREATE TRIGGER update_submissions_updated_at
 -- Enable Row Level Security
 ALTER TABLE public.submissions ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
+-- RLS Policies (используем JWT claims вместо EXISTS для избежания infinite recursion)
 
 -- Students can view their own submissions
 CREATE POLICY "Students can view own submissions"
@@ -42,10 +42,7 @@ CREATE POLICY "Students can view own submissions"
   FOR SELECT
   USING (
     auth.uid() = user_id AND
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND role = 'student'
-    )
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'student'
   );
 
 -- Students can insert their own submissions
@@ -54,10 +51,7 @@ CREATE POLICY "Students can create own submissions"
   FOR INSERT
   WITH CHECK (
     auth.uid() = user_id AND
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND role = 'student'
-    )
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'student'
   );
 
 -- Students can update their own submissions
@@ -66,10 +60,7 @@ CREATE POLICY "Students can update own submissions"
   FOR UPDATE
   USING (
     auth.uid() = user_id AND
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND role = 'student'
-    )
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'student'
   );
 
 -- Teachers and editors can view all submissions
@@ -77,10 +68,7 @@ CREATE POLICY "Teachers can view all submissions"
   ON public.submissions
   FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND role IN ('teacher', 'editor')
-    )
+    (auth.jwt() -> 'user_metadata' ->> 'role') IN ('teacher', 'editor')
   );
 
 -- Teachers and editors can update all submissions (for grading)
@@ -88,10 +76,7 @@ CREATE POLICY "Teachers can update all submissions"
   ON public.submissions
   FOR UPDATE
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND role IN ('teacher', 'editor')
-    )
+    (auth.jwt() -> 'user_metadata' ->> 'role') IN ('teacher', 'editor')
   );
 
 -- Add comment for documentation

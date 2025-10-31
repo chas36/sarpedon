@@ -3,8 +3,9 @@ import { Link, useParams } from 'react-router-dom';
 import { Spinner, CodeEditor } from '@/shared/components/ui';
 import { getLevelById } from '../api/levelsApi';
 import { createSubmission, getLatestSubmission } from '../api/submissionsApi';
+import { executeCode, runTests } from '@/shared/api/codeExecutionApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import type { Level } from '@/shared/types';
+import type { Level, ExecutionResponse } from '@/shared/types';
 
 export function SolveLevelPage() {
   const { levelId } = useParams<{ levelId: string }>();
@@ -15,6 +16,8 @@ export function SolveLevelPage() {
   const [code, setCode] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [running, setRunning] = useState(false);
+  const [executionResult, setExecutionResult] = useState<ExecutionResponse | null>(null);
 
   useEffect(() => {
     if (levelId && user) {
@@ -54,12 +57,13 @@ export function SolveLevelPage() {
   };
 
   const handleSaveCode = async () => {
-    if (!levelId || !code.trim()) return;
+    if (!levelId || !code.trim() || !user) return;
 
     try {
       setSaving(true);
       setSaveStatus('idle');
       await createSubmission({
+        user_id: user.id,
         level_id: levelId,
         code: code.trim(),
         status: 'pending'
@@ -71,6 +75,63 @@ export function SolveLevelPage() {
       console.error('Failed to save submission:', err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRunCode = async () => {
+    if (!level || !code.trim()) return;
+
+    try {
+      setRunning(true);
+      setExecutionResult(null);
+
+      // Если есть тестовые случаи, запустить с тестами
+      if (level.test_cases && level.test_cases.length > 0) {
+        // Преобразовать test_cases из базы данных в формат execution API
+        const testCases = level.test_cases.map(tc => ({
+          input: tc.input,
+          expected_output: tc.output
+        }));
+
+        const result = await runTests({
+          language: level.language,
+          code: code.trim(),
+          testCases
+        });
+
+        setExecutionResult(result);
+
+        // Автоматически сохранить результат
+        if (levelId && user) {
+          await createSubmission({
+            user_id: user.id,
+            level_id: levelId,
+            code: code.trim(),
+            status: result.allTestsPassed ? 'passed' : 'failed'
+          });
+        }
+      } else {
+        // Если нет тестовых случаев, просто выполнить код
+        const result = await executeCode({
+          language: level.language,
+          code: code.trim()
+        });
+
+        setExecutionResult(result);
+      }
+    } catch (err) {
+      console.error('Failed to execute code:', err);
+      setExecutionResult({
+        success: false,
+        results: {
+          stdout: '',
+          stderr: err instanceof Error ? err.message : 'Ошибка выполнения кода',
+          exitCode: 1
+        },
+        error: err instanceof Error ? err.message : 'Ошибка выполнения кода'
+      });
+    } finally {
+      setRunning(false);
     }
   };
 
@@ -205,10 +266,11 @@ export function SolveLevelPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
-            disabled={!code.trim()}
+            onClick={handleRunCode}
+            disabled={running || !code.trim()}
             className="px-6 py-3 bg-learning-accent text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
-            Запустить код
+            {running ? 'Выполнение...' : 'Запустить код'}
           </button>
           <button
             onClick={handleSaveCode}
@@ -229,6 +291,132 @@ export function SolveLevelPage() {
           </div>
         )}
       </div>
+
+      {/* Execution Results */}
+      {executionResult && (
+        <div className="bg-learning-surface border border-learning-muted/10 rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-learning-text mb-4">
+            Результаты выполнения
+          </h2>
+
+          {/* Test Results Summary */}
+          {executionResult.testResults && executionResult.testResults.length > 0 && (
+            <div className="mb-4">
+              <div className={`p-4 rounded-lg ${
+                executionResult.allTestsPassed
+                  ? 'bg-green-500/10 border border-green-500/20'
+                  : 'bg-red-500/10 border border-red-500/20'
+              }`}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className={`text-lg font-semibold ${
+                    executionResult.allTestsPassed ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {executionResult.allTestsPassed ? '✓ Все тесты прошли!' : '✗ Некоторые тесты не прошли'}
+                  </span>
+                  <span className="text-sm text-learning-muted">
+                    {executionResult.testResults.filter(t => t.passed).length} / {executionResult.testResults.length}
+                  </span>
+                </div>
+
+                {/* Individual Test Results */}
+                <div className="space-y-2">
+                  {executionResult.testResults.map((testResult, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3 rounded ${
+                        testResult.passed
+                          ? 'bg-green-500/5 border border-green-500/10'
+                          : 'bg-red-500/5 border border-red-500/10'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <span className={`font-medium ${
+                          testResult.passed ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {testResult.passed ? '✓' : '✗'} Тест {idx + 1}
+                        </span>
+                      </div>
+
+                      {testResult.testCase.description && (
+                        <div className="text-sm text-learning-muted mb-2">
+                          {testResult.testCase.description}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <div className="text-learning-muted mb-1">Входные данные:</div>
+                          <pre className="bg-learning-bg p-2 rounded text-learning-text overflow-x-auto">
+                            {testResult.testCase.input || '(пусто)'}
+                          </pre>
+                        </div>
+                        <div>
+                          <div className="text-learning-muted mb-1">Ожидаемый вывод:</div>
+                          <pre className="bg-learning-bg p-2 rounded text-green-400 overflow-x-auto">
+                            {testResult.expectedOutput}
+                          </pre>
+                        </div>
+                      </div>
+
+                      {!testResult.passed && (
+                        <div className="mt-2">
+                          <div className="text-learning-muted mb-1 text-sm">Ваш вывод:</div>
+                          <pre className="bg-learning-bg p-2 rounded text-red-400 overflow-x-auto text-sm">
+                            {testResult.actualOutput || '(пусто)'}
+                          </pre>
+                          {testResult.error && (
+                            <div className="mt-2">
+                              <div className="text-learning-muted mb-1 text-sm">Ошибка:</div>
+                              <pre className="bg-learning-bg p-2 rounded text-red-400 overflow-x-auto text-sm">
+                                {testResult.error}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Standard Output/Error */}
+          {(executionResult.results.stdout || executionResult.results.stderr) && (
+            <div className="space-y-3">
+              {executionResult.results.stdout && (
+                <div>
+                  <div className="text-sm text-learning-muted mb-2">Вывод (stdout):</div>
+                  <pre className="bg-learning-bg p-3 rounded text-learning-text overflow-x-auto text-sm">
+                    {executionResult.results.stdout}
+                  </pre>
+                </div>
+              )}
+
+              {executionResult.results.stderr && (
+                <div>
+                  <div className="text-sm text-learning-muted mb-2">Ошибки (stderr):</div>
+                  <pre className="bg-learning-bg p-3 rounded text-red-400 overflow-x-auto text-sm">
+                    {executionResult.results.stderr}
+                  </pre>
+                </div>
+              )}
+
+              <div className="text-xs text-learning-muted">
+                Код завершения: {executionResult.results.exitCode}
+              </div>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {executionResult.error && !executionResult.results.stdout && !executionResult.results.stderr && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded p-4">
+              <div className="text-red-400 font-medium mb-2">Ошибка выполнения</div>
+              <div className="text-sm text-learning-text">{executionResult.error}</div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
