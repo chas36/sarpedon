@@ -4,6 +4,7 @@ import { RoleGuard } from './shared/components/guards/RoleGuard';
 import { StudentLayout } from './layouts/StudentLayout';
 import { TeacherLayout } from './layouts/TeacherLayout';
 import { LevelsListPage } from './features/learning/pages/LevelsListPage';
+import { SolveLevelPage } from './features/learning/pages/SolveLevelPage';
 import { useAuthStore } from './features/auth/store/authStore';
 
 // Placeholder components for routes (will be implemented in future tasks)
@@ -38,6 +39,7 @@ function App() {
                 <Routes>
                   <Route index element={<Navigate to="/student/levels" replace />} />
                   <Route path="levels" element={<LevelsListPage />} />
+                  <Route path="levels/:levelId/solve" element={<SolveLevelPage />} />
                   <Route path="progress" element={<div>Прогресс - в разработке</div>} />
                   <Route path="competitions" element={<div>Соревнования - в разработке</div>} />
                 </Routes>

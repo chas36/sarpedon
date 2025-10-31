@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { LevelsListPage } from '../LevelsListPage';
 import * as levelsApi from '../../api/levelsApi';
 
@@ -15,6 +16,15 @@ vi.mock('@/shared/lib/supabase', () => ({
     from: vi.fn()
   }
 }));
+
+// Helper to render with router
+const renderWithRouter = (component: React.ReactElement) => {
+  return render(
+    <MemoryRouter>
+      {component}
+    </MemoryRouter>
+  );
+};
 
 const mockLevels = [
   {
@@ -57,7 +67,7 @@ describe('LevelsListPage', () => {
   it('should render page title when levels exist', async () => {
     vi.mocked(levelsApi.getLevels).mockResolvedValue(mockLevels);
 
-    render(<LevelsListPage />);
+    renderWithRouter(<LevelsListPage />);
 
     await waitFor(() => {
       expect(screen.getByText(/^уровни$/i)).toBeInTheDocument();
@@ -69,7 +79,7 @@ describe('LevelsListPage', () => {
       () => new Promise(() => {}) // Never resolves
     );
 
-    render(<LevelsListPage />);
+    renderWithRouter(<LevelsListPage />);
 
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
@@ -77,7 +87,7 @@ describe('LevelsListPage', () => {
   it('should fetch and display levels', async () => {
     vi.mocked(levelsApi.getLevels).mockResolvedValue(mockLevels);
 
-    render(<LevelsListPage />);
+    renderWithRouter(<LevelsListPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Привет, мир!')).toBeInTheDocument();
@@ -88,7 +98,7 @@ describe('LevelsListPage', () => {
   it('should display error message when fetch fails', async () => {
     vi.mocked(levelsApi.getLevels).mockRejectedValue(new Error('Failed to fetch'));
 
-    render(<LevelsListPage />);
+    renderWithRouter(<LevelsListPage />);
 
     await waitFor(() => {
       expect(screen.getByText(/ошибка загрузки/i)).toBeInTheDocument();
@@ -98,7 +108,7 @@ describe('LevelsListPage', () => {
   it('should display empty state when no levels', async () => {
     vi.mocked(levelsApi.getLevels).mockResolvedValue([]);
 
-    render(<LevelsListPage />);
+    renderWithRouter(<LevelsListPage />);
 
     await waitFor(() => {
       expect(screen.getByText(/нет доступных уровней/i)).toBeInTheDocument();
@@ -113,7 +123,7 @@ describe('LevelsListPage', () => {
 
     vi.mocked(levelsApi.getLevels).mockResolvedValue(levelsWithTopics);
 
-    render(<LevelsListPage />);
+    renderWithRouter(<LevelsListPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Основы Python')).toBeInTheDocument();
@@ -123,7 +133,7 @@ describe('LevelsListPage', () => {
   it('should display difficulty badges', async () => {
     vi.mocked(levelsApi.getLevels).mockResolvedValue(mockLevels);
 
-    render(<LevelsListPage />);
+    renderWithRouter(<LevelsListPage />);
 
     await waitFor(() => {
       const badges = screen.getAllByText(/легко/i);

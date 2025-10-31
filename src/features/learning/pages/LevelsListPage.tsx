@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Spinner } from '@/shared/components/ui';
 import { getLevels } from '../api/levelsApi';
 import type { Level } from '@/shared/types';
@@ -112,9 +113,10 @@ export function LevelsListPage() {
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {topicLevels.map((level) => (
-              <div
+              <Link
                 key={level.id}
-                className="bg-learning-surface border border-learning-muted/10 rounded-lg p-6 hover:border-learning-accent/50 transition-all cursor-pointer group"
+                to={`/student/levels/${level.id}/solve`}
+                className="bg-learning-surface border border-learning-muted/10 rounded-lg p-6 hover:border-learning-accent/50 transition-all cursor-pointer group block"
               >
                 <div className="flex items-start justify-between mb-3">
                   <h3 className="text-lg font-semibold text-learning-text group-hover:text-learning-accent transition-colors">
@@ -146,7 +148,7 @@ export function LevelsListPage() {
                     )}
                   </div>
                 )}
-              </div>
+              </Link>
             ))}
           </div>
         </div>
