@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Sarpedon Logo](public/logo.png)
+![Sarpedon Logo](logo.png)
 
 **Интерактивная платформа для обучения программированию с автоматической проверкой кода и адаптивным обучением**
 
