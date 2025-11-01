@@ -4,8 +4,9 @@ import { Spinner, CodeEditor } from '@/shared/components/ui';
 import { getLevelById } from '../api/levelsApi';
 import { createSubmission, getLatestSubmission } from '../api/submissionsApi';
 import { executeCode, runTests } from '@/shared/api/codeExecutionApi';
+import { getAIFeedback } from '@/shared/api/aiFeedbackApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import type { Level, ExecutionResponse } from '@/shared/types';
+import type { Level, ExecutionResponse, AIFeedbackResponse } from '@/shared/types';
 
 export function SolveLevelPage() {
   const { levelId } = useParams<{ levelId: string }>();
@@ -18,6 +19,8 @@ export function SolveLevelPage() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   const [running, setRunning] = useState(false);
   const [executionResult, setExecutionResult] = useState<ExecutionResponse | null>(null);
+  const [aiFeedback, setAiFeedback] = useState<AIFeedbackResponse | null>(null);
+  const [loadingAI, setLoadingAI] = useState(false);
 
   useEffect(() => {
     if (levelId && user) {
@@ -78,6 +81,34 @@ export function SolveLevelPage() {
     }
   };
 
+  const handleGetAIFeedback = async (executionResult: ExecutionResponse) => {
+    if (!level || !executionResult.testResults) return;
+
+    try {
+      setLoadingAI(true);
+      setAiFeedback(null);
+
+      const feedback = await getAIFeedback({
+        code: code.trim(),
+        language: level.language,
+        task_description: level.description,
+        test_results: executionResult.testResults.map(tr => ({
+          input: tr.testCase.input,
+          expected_output: tr.expectedOutput,
+          actual_output: tr.actualOutput,
+          error: tr.error
+        })),
+        hints: level.hints || []
+      });
+
+      setAiFeedback(feedback);
+    } catch (err) {
+      console.error('Failed to get AI feedback:', err);
+    } finally {
+      setLoadingAI(false);
+    }
+  };
+
   const handleRunCode = async () => {
     if (!level || !code.trim()) return;
 
@@ -109,6 +140,13 @@ export function SolveLevelPage() {
             code: code.trim(),
             status: result.allTestsPassed ? 'passed' : 'failed'
           });
+        }
+
+        // Если тесты не прошли, получить AI feedback
+        if (!result.allTestsPassed) {
+          handleGetAIFeedback(result);
+        } else {
+          setAiFeedback(null); // Очистить предыдущий feedback при успехе
         }
       } else {
         // Если нет тестовых случаев, просто выполнить код
@@ -413,6 +451,57 @@ export function SolveLevelPage() {
             <div className="bg-red-500/10 border border-red-500/20 rounded p-4">
               <div className="text-red-400 font-medium mb-2">Ошибка выполнения</div>
               <div className="text-sm text-learning-text">{executionResult.error}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* AI Feedback Section */}
+      {loadingAI && (
+        <div className="bg-learning-surface border border-learning-accent/20 rounded-lg p-6">
+          <div className="flex items-center gap-3">
+            <Spinner size="sm" />
+            <span className="text-learning-accent">AI анализирует твой код...</span>
+          </div>
+        </div>
+      )}
+
+      {aiFeedback && !loadingAI && (
+        <div className="bg-learning-surface border border-learning-accent/20 rounded-lg p-6">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="text-2xl">🤖</div>
+            <div className="flex-1">
+              <h2 className="text-lg font-semibold text-learning-accent mb-2">
+                AI Наставник
+              </h2>
+              <p className="text-learning-text">
+                {aiFeedback.feedback}
+              </p>
+            </div>
+          </div>
+
+          {aiFeedback.suggestions && aiFeedback.suggestions.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <h3 className="text-sm font-medium text-learning-muted mb-2">
+                💡 Подсказки:
+              </h3>
+              <ul className="space-y-2">
+                {aiFeedback.suggestions.map((suggestion, idx) => (
+                  <li
+                    key={idx}
+                    className="flex items-start gap-2 text-sm text-learning-text bg-learning-bg p-3 rounded"
+                  >
+                    <span className="text-learning-accent font-medium">{idx + 1}.</span>
+                    <span>{suggestion}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {!aiFeedback.success && aiFeedback.error && (
+            <div className="mt-3 text-xs text-learning-muted">
+              Примечание: AI сервис временно недоступен, показаны базовые подсказки
             </div>
           )}
         </div>

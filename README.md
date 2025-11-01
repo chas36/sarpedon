@@ -38,6 +38,7 @@
 - 🎮 **Интерактивные задания** — решайте задачи по программированию прямо в браузере
 - ▶️ **Выполнение кода** — запускайте свой код и видите результаты в реальном времени
 - ✅ **Автоматическая проверка** — мгновенная валидация решений с тестовыми случаями
+- 🤖 **AI Наставник** — получайте умные подсказки от AI при ошибках (Qwen3-Coder via Hugging Face)
 - 📊 **Отслеживание прогресса** — следите за своими достижениями и статистикой
 - 💾 **Автосохранение** — код сохраняется автоматически, продолжайте с того же места
 - 🎨 **Monaco Editor** — профессиональный редактор кода с подсветкой синтаксиса
@@ -71,6 +72,10 @@
   - Authentication
   - Real-time subscriptions
 - **[Piston API](https://emkc.org/api/v2/piston)** — выполнение кода
+- **[Hugging Face Inference API](https://huggingface.co/inference-api)** — AI обратная связь
+  - Qwen3-Coder для анализа кода
+  - Бесплатный tier для образовательных проектов
+  - Автоматические подсказки при ошибках
 
 ### Testing & Quality
 
@@ -110,7 +115,14 @@ npm install
 ```env
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_HUGGINGFACE_API_KEY=your_huggingface_api_key
 ```
+
+**Получение Hugging Face API ключа:**
+1. Зарегистрируйтесь на [Hugging Face](https://huggingface.co/)
+2. Перейдите в [Settings → Access Tokens](https://huggingface.co/settings/tokens)
+3. Создайте новый токен с правами `read`
+4. Скопируйте токен в `.env` файл
 
 4. **Примените миграции базы данных**
 
@@ -315,10 +327,10 @@ npm test -- SolveLevelPage.test.tsx
 - [x] Phase 2: Student Learning Module
 - [x] Phase 3: Progress Tracking
 - [x] Phase 4: Code Execution
+- [x] Phase 5: AI Feedback (Hugging Face)
 
 ### In Progress 🚧
 
-- [ ] Phase 5: AI Feedback (Claude API)
 - [ ] Phase 6: Teacher Dashboard
 - [ ] Phase 7: Competitions System
 
