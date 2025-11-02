@@ -8,6 +8,7 @@ import { LevelsListPage, SolveLevelPage, ProgressPage } from './features/learnin
 import { LevelsManagePage } from './features/teacher/pages/LevelsManagePage';
 import { LevelEditorPage } from './features/teacher/pages/LevelEditorPage';
 import { StudentsPage } from './features/teacher/pages/StudentsPage';
+import { StudentDetailsPage } from './features/teacher/pages/StudentDetailsPage';
 import { StudentAnalyticsPage } from './features/teacher/pages/StudentAnalyticsPage';
 import { useAuthStore } from './features/auth/store/authStore';
 import { getCurrentUser, getProfile } from './features/auth/api/authApi';
@@ -111,7 +112,7 @@ function App() {
                 <Routes>
                   <Route index element={<TeacherDashboard />} />
                   <Route path="students" element={<StudentsPage />} />
-                  <Route path="students/:id" element={<StudentAnalyticsPage />} />
+                  <Route path="students/:id" element={<StudentDetailsPage />} />
                   <Route path="levels" element={<LevelsManagePage />} />
                   <Route path="levels/:id/edit" element={<LevelEditorPage />} />
                   <Route path="competitions" element={<div>Соревнования - в разработке</div>} />
