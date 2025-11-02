@@ -38,7 +38,7 @@
 - 🎮 **Интерактивные задания** — решайте задачи по программированию прямо в браузере
 - ▶️ **Выполнение кода** — запускайте свой код и видите результаты в реальном времени
 - ✅ **Автоматическая проверка** — мгновенная валидация решений с тестовыми случаями
-- 🤖 **Умный анализ ошибок** — автоматические персонализированные подсказки на основе результатов тестов
+- 🤖 **AI Наставник** — умные персонализированные подсказки от Llama 3.1 (Groq API, бесплатно!)
 - 📊 **Отслеживание прогресса** — следите за своими достижениями и статистикой
 - 💾 **Автосохранение** — код сохраняется автоматически, продолжайте с того же места
 - 🎨 **Monaco Editor** — профессиональный редактор кода с подсветкой синтаксиса
@@ -72,10 +72,11 @@
   - Authentication
   - Real-time subscriptions
 - **[Piston API](https://emkc.org/api/v2/piston)** — выполнение кода
-- **Умный анализ ошибок** — персонализированные подсказки
-  - Автоматический анализ результатов тестов
-  - Определение типичных ошибок (формат, пробелы, логика)
-  - Готовность к интеграции AI (Groq, Ollama, OpenRouter)
+- **[Groq API](https://groq.com/)** — AI обратная связь
+  - Llama 3.1 8B Instant для анализа кода
+  - Бесплатный tier: 14,400 запросов/день
+  - Самый быстрый inference в мире
+  - Персонализированные подсказки на русском языке
 
 ### Testing & Quality
 
@@ -115,9 +116,20 @@ npm install
 ```env
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_GROQ_API_KEY=your_groq_api_key
 ```
 
-> **Примечание об AI**: VITE_HUGGINGFACE_API_KEY больше не требуется, так как Hugging Face закрыл бесплатный Serverless Inference API с 1 ноября 2025. Платформа использует умный анализ ошибок без внешних AI сервисов. Для интеграции AI в будущем доступны альтернативы: Groq, Ollama, OpenRouter.
+**Получение Groq API ключа (бесплатно!):**
+1. Зарегистрируйтесь на [Groq Console](https://console.groq.com/)
+2. Перейдите в [API Keys](https://console.groq.com/keys)
+3. Создайте новый API ключ
+4. Скопируйте ключ в `.env` файл
+
+**Бесплатный tier Groq:**
+- 14,400 запросов в день
+- 6,000-15,000 токенов в минуту
+- Llama 3.3 70B и другие мощные модели
+- Самый быстрый inference в мире!
 
 4. **Примените миграции базы данных**
 
@@ -321,16 +333,19 @@ npm test -- SolveLevelPage.test.tsx
 - [x] Phase 1: MVP Authentication & UI
 - [x] Phase 2: Student Learning Module
 - [x] Phase 3: Progress Tracking
-- [x] Phase 4: Code Execution
-- [x] Phase 5: AI Feedback (Hugging Face)
+- [x] Phase 4: Code Execution (Piston API)
+- [x] Phase 5: AI Feedback (Groq API + Llama 3.1)
 
 ### In Progress 🚧
 
 - [ ] Phase 6: Teacher Dashboard
-- [ ] Phase 7: Competitions System
+  - [ ] Level management (CRUD)
+  - [ ] Student analytics
+  - [ ] Class management
 
 ### Planned 📋
 
+- [ ] Phase 7: Competitions System
 - [ ] Phase 8: Real-time Collaboration
 - [ ] Phase 9: Mobile App
 - [ ] Phase 10: Gamification
