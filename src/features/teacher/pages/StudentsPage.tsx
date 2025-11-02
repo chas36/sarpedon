@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllStudents, getAllClasses } from '@/features/teacher/api/studentsApi';
 import { Button, Spinner } from '@/shared/components/ui';
+import { AddStudentModal } from '../components/AddStudentModal';
+import { BulkImportStudentsModal } from '../components/BulkImportStudentsModal';
+import { ManageClassesModal } from '../components/ManageClassesModal';
 import type { Profile } from '@/shared/types';
 
 export function StudentsPage() {
@@ -11,6 +14,11 @@ export function StudentsPage() {
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Modal states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  const [showManageClassesModal, setShowManageClassesModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -59,6 +67,28 @@ export function StudentsPage() {
         <div>
           <h1 className="text-3xl font-bold text-admin-text">Студенты</h1>
           <p className="text-admin-muted mt-1">Просмотр и управление учениками</p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowManageClassesModal(true)}
+          >
+            Управление классами
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowBulkImportModal(true)}
+          >
+            Импорт списком
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setShowAddModal(true)}
+          >
+            Добавить ученика
+          </Button>
         </div>
       </div>
 
@@ -140,6 +170,30 @@ export function StudentsPage() {
           </table>
         </div>
       )}
+
+      {/* Modals */}
+      <AddStudentModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={() => {
+          setShowAddModal(false);
+          loadData();
+        }}
+      />
+
+      <BulkImportStudentsModal
+        isOpen={showBulkImportModal}
+        onClose={() => setShowBulkImportModal(false)}
+        onSuccess={() => {
+          setShowBulkImportModal(false);
+          loadData();
+        }}
+      />
+
+      <ManageClassesModal
+        isOpen={showManageClassesModal}
+        onClose={() => setShowManageClassesModal(false)}
+      />
     </div>
   );
 }
