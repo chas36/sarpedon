@@ -9,7 +9,6 @@ import { LevelsManagePage } from './features/teacher/pages/LevelsManagePage';
 import { LevelEditorPage } from './features/teacher/pages/LevelEditorPage';
 import { StudentsPage } from './features/teacher/pages/StudentsPage';
 import { StudentDetailsPage } from './features/teacher/pages/StudentDetailsPage';
-import { StudentAnalyticsPage } from './features/teacher/pages/StudentAnalyticsPage';
 import { useAuthStore } from './features/auth/store/authStore';
 import { getCurrentUser, getProfile } from './features/auth/api/authApi';
 import { Spinner } from './shared/components/ui';
