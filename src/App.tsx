@@ -5,17 +5,34 @@ import { RoleGuard } from './shared/components/guards/RoleGuard';
 import { StudentLayout } from './layouts/StudentLayout';
 import { TeacherLayout } from './layouts/TeacherLayout';
 import { LevelsListPage, SolveLevelPage, ProgressPage } from './features/learning/pages';
+import { LevelsManagePage } from './features/teacher/pages/LevelsManagePage';
+import { LevelEditorPage } from './features/teacher/pages/LevelEditorPage';
+import { StudentsPage } from './features/teacher/pages/StudentsPage';
+import { StudentAnalyticsPage } from './features/teacher/pages/StudentAnalyticsPage';
 import { useAuthStore } from './features/auth/store/authStore';
 import { getCurrentUser, getProfile } from './features/auth/api/authApi';
 import { Spinner } from './shared/components/ui';
 
-// Placeholder components for routes (will be implemented in future tasks)
-function StudentDashboard() {
-  return <div className="text-learning-text">Панель студента - в разработке</div>;
-}
-
 function TeacherDashboard() {
-  return <div className="text-admin-text">Панель преподавателя - в разработке</div>;
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-admin-text">Панель преподавателя</h1>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-admin-surface rounded-lg p-6 border border-admin-muted/10">
+          <h2 className="text-xl font-semibold text-admin-text mb-2">Студенты</h2>
+          <p className="text-admin-muted text-sm">Управление учениками и просмотр прогресса</p>
+        </div>
+        <div className="bg-admin-surface rounded-lg p-6 border border-admin-muted/10">
+          <h2 className="text-xl font-semibold text-admin-text mb-2">Уровни</h2>
+          <p className="text-admin-muted text-sm">Создание и редактирование заданий</p>
+        </div>
+        <div className="bg-admin-surface rounded-lg p-6 border border-admin-muted/10">
+          <h2 className="text-xl font-semibold text-admin-text mb-2">Статистика</h2>
+          <p className="text-admin-muted text-sm">Аналитика и отчеты</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function App() {
@@ -93,8 +110,10 @@ function App() {
               <TeacherLayout>
                 <Routes>
                   <Route index element={<TeacherDashboard />} />
-                  <Route path="students" element={<div>Ученики - в разработке</div>} />
-                  <Route path="levels" element={<div>Уровни - в разработке</div>} />
+                  <Route path="students" element={<StudentsPage />} />
+                  <Route path="students/:id" element={<StudentAnalyticsPage />} />
+                  <Route path="levels" element={<LevelsManagePage />} />
+                  <Route path="levels/:id/edit" element={<LevelEditorPage />} />
                   <Route path="competitions" element={<div>Соревнования - в разработке</div>} />
                   <Route path="statistics" element={<div>Статистика - в разработке</div>} />
                 </Routes>

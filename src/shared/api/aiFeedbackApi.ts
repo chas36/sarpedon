@@ -1,36 +1,30 @@
 import type { AIFeedbackRequest, AIFeedbackResponse } from '@/shared/types';
 
 /**
- * ВАЖНО: Hugging Face закрыл бесплатный Serverless Inference API с 1 ноября 2025
+ * Groq API Integration
+ * Документация: https://console.groq.com/docs
  *
- * Все endpoints возвращают 404:
- * - https://api-inference.huggingface.co (старый, не работает)
- * - https://router.huggingface.co/hf-inference (новый, требует оплату)
+ * Бесплатный tier:
+ * - 14,400 запросов в день
+ * - 6,000-15,000 токенов в минуту
+ * - OpenAI-совместимый API
  *
- * АЛЬТЕРНАТИВЫ для будущей интеграции:
- * 1. Groq API - бесплатный, быстрый (30 req/мин)
- *    https://console.groq.com/
- *
- * 2. Ollama - локальный, полностью бесплатный
- *    Требует backend сервер для запуска моделей
- *
- * 3. OpenRouter - агрегатор с бесплатным tier
- *    https://openrouter.ai/
- *
- * ТЕКУЩЕЕ РЕШЕНИЕ: Используем умные fallback подсказки
- * Они анализируют результаты тестов и дают полезные советы без AI
+ * Модели:
+ * - llama-3.3-70b-versatile - мощная, универсальная
+ * - llama-3.1-8b-instant - быстрая, легкая
+ * - mixtral-8x7b-32768 - хороший контекст
  */
-const USE_AI = false;
-const HF_INFERENCE_URL = 'https://api-inference.huggingface.co/models';
-const CODE_MODEL = 'codellama/CodeLlama-7b-hf';
+const USE_AI = true;
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'llama-3.1-8b-instant'; // Быстрая модель для бесплатного tier
 
 /**
- * Получить AI ключ из переменных окружения
+ * Получить Groq API ключ из переменных окружения
  */
-function getHuggingFaceApiKey(): string {
-  const apiKey = import.meta.env.VITE_HUGGINGFACE_API_KEY;
+function getGroqApiKey(): string {
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
   if (!apiKey) {
-    throw new Error('VITE_HUGGINGFACE_API_KEY не установлен в .env');
+    throw new Error('VITE_GROQ_API_KEY не установлен в .env');
   }
   return apiKey;
 }
@@ -177,28 +171,32 @@ export async function getAIFeedback(request: AIFeedbackRequest): Promise<AIFeedb
   }
 
   try {
-    const apiKey = getHuggingFaceApiKey();
+    const apiKey = getGroqApiKey();
     const prompt = createFeedbackPrompt(request);
 
     // Логируем для отладки
-    const requestUrl = `${HF_INFERENCE_URL}/${CODE_MODEL}`;
-    console.log('AI Request URL:', requestUrl);
+    console.log('AI Request URL:', GROQ_API_URL);
+    console.log('AI Request Model:', GROQ_MODEL);
     console.log('AI Request has API key:', !!apiKey);
 
-    const response = await fetch(requestUrl, {
+    // Groq использует OpenAI-совместимый формат
+    const response = await fetch(GROQ_API_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        inputs: prompt,
-        parameters: {
-          max_new_tokens: 500,
-          temperature: 0.7,
-          top_p: 0.95,
-          return_full_text: false
-        }
+        model: GROQ_MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 500,
+        top_p: 0.95
       })
     });
 
@@ -236,13 +234,14 @@ export async function getAIFeedback(request: AIFeedbackRequest): Promise<AIFeedb
         };
       }
 
-      throw new Error(`Hugging Face API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Groq API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
+    console.log('AI Response data:', data);
 
-    // Hugging Face возвращает массив с одним объектом
-    const generatedText = Array.isArray(data) ? data[0]?.generated_text : data.generated_text;
+    // Groq использует OpenAI формат: data.choices[0].message.content
+    const generatedText = data.choices?.[0]?.message?.content;
 
     if (!generatedText) {
       throw new Error('Нет ответа от AI модели');

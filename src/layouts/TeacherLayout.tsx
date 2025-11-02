@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Button } from '@/shared/components/ui';
@@ -10,15 +11,26 @@ interface TeacherLayoutProps {
 export function TeacherLayout({ children }: TeacherLayoutProps) {
   const { profile } = useAuthStore();
   const { handleLogout } = useAuth();
+  const location = useLocation();
 
   const onLogout = async () => {
     try {
       await handleLogout();
-      // TODO: Redirect to login page after router is fully set up
     } catch (err) {
       // Error handled by useAuth
     }
   };
+
+  const isActive = (path: string) => {
+    return location.pathname.startsWith(path);
+  };
+
+  const navLinkClass = (path: string) =>
+    `text-sm font-medium transition-colors ${
+      isActive(path)
+        ? 'text-admin-accent'
+        : 'text-admin-text hover:text-admin-accent'
+    }`;
 
   return (
     <div className="min-h-screen bg-admin-bg">
@@ -65,30 +77,18 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
       <nav className="bg-admin-surface border-b border-admin-muted/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-8 h-12 items-center">
-            <a
-              href="#"
-              className="text-sm font-medium text-admin-text hover:text-admin-accent transition-colors"
-            >
+            <Link to="/teacher/students" className={navLinkClass('/teacher/students')}>
               Ученики
-            </a>
-            <a
-              href="#"
-              className="text-sm font-medium text-admin-text hover:text-admin-accent transition-colors"
-            >
+            </Link>
+            <Link to="/teacher/levels" className={navLinkClass('/teacher/levels')}>
               Уровни
-            </a>
-            <a
-              href="#"
-              className="text-sm font-medium text-admin-text hover:text-admin-accent transition-colors"
-            >
+            </Link>
+            <Link to="/teacher/competitions" className={navLinkClass('/teacher/competitions')}>
               Соревнования
-            </a>
-            <a
-              href="#"
-              className="text-sm font-medium text-admin-text hover:text-admin-accent transition-colors"
-            >
+            </Link>
+            <Link to="/teacher/statistics" className={navLinkClass('/teacher/statistics')}>
               Статистика
-            </a>
+            </Link>
           </div>
         </div>
       </nav>
