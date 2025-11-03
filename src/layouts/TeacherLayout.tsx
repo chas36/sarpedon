@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Button } from '@/shared/components/ui';
@@ -12,10 +12,12 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
   const { profile } = useAuthStore();
   const { handleLogout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const onLogout = async () => {
     try {
       await handleLogout();
+      navigate('/login');
     } catch (err) {
       // Error handled by useAuth
     }
