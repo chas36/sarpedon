@@ -3,23 +3,23 @@ import type { LoginCredentials } from '@/shared/types';
 
 export async function login(credentials: LoginCredentials) {
   // Пользователи входят по логину, но Supabase требует email
-  // Если это уже email - используем его, если нет - ищем по логину в профиле
   let email = credentials.login;
 
+  // Если это не email (нет @), пробуем найти email в профиле
   if (!email.includes('@')) {
-    // Это логин, нужно найти email в profiles
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('email')
-      .eq('generated_login', credentials.login)
-      .single();
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('generated_login', credentials.login)
+        .maybeSingle(); // maybeSingle() не выдаёт ошибку если нет результата
 
-    if (profile?.email) {
-      email = profile.email;
-    } else {
-      // Если профиль не найден, пытаемся войти как есть
-      // (может быть teacher с реальным email)
-      email = credentials.login;
+      if (!profileError && profile?.email) {
+        email = profile.email;
+      }
+    } catch (e) {
+      // Игнорируем ошибки, используем логин как есть
+      console.warn('Could not fetch profile email, using login as-is');
     }
   }
 

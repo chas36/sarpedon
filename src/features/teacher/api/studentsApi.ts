@@ -54,9 +54,9 @@ export async function getStudentWithProgress(studentId: string): Promise<Student
 
   // Get progress statistics
   const { data: progressData, error: progressError } = await supabase
-    .from('user_progress')
+    .from('level_progress')
     .select('status')
-    .eq('user_id', studentId);
+    .eq('student_id', studentId);
 
   if (progressError) throw progressError;
 
@@ -67,13 +67,13 @@ export async function getStudentWithProgress(studentId: string): Promise<Student
   // Get submission statistics
   const { data: submissions, error: submissionsError } = await supabase
     .from('submissions')
-    .select('is_correct')
+    .select('status')
     .eq('user_id', studentId);
 
   if (submissionsError) throw submissionsError;
 
   const totalSubmissions = submissions?.length || 0;
-  const successfulSubmissions = submissions?.filter(s => s.is_correct).length || 0;
+  const successfulSubmissions = submissions?.filter(s => s.status === 'passed').length || 0;
   const successRate = totalSubmissions > 0
     ? Math.round((successfulSubmissions / totalSubmissions) * 100)
     : 0;
@@ -125,7 +125,8 @@ export async function getAllClasses(): Promise<string[]> {
 // ============================================================
 
 /**
- * Create new student
+ * Create new student using Edge Function
+ * Edge Function использует Service Role Key для обхода RLS и создания auth пользователей
  */
 export async function createStudent(data: {
   firstName: string;
@@ -138,40 +139,21 @@ export async function createStudent(data: {
   const login = data.login || await generateUniqueLogin();
   const password = data.password || login;
 
-  // Email требуется только для Supabase Auth (пользователи входят по логину)
-  // Используем простой формат: student{timestamp}@test.com для уникальности
-  const email = `student${Date.now()}@test.com`;
-
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: undefined, // Не отправлять email подтверждения
+  // Call Edge Function to create student
+  const { data: result, error } = await supabase.functions.invoke('create-student', {
+    body: {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      className: data.className,
+      login,
+      password,
     },
   });
 
-  if (authError) throw authError;
-  if (!authData.user) throw new Error('Failed to create user');
+  if (error) throw error;
+  if (!result?.success) throw new Error(result?.error || 'Failed to create student');
 
-  // Create profile
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .insert({
-      id: authData.user.id,
-      first_name: data.firstName,
-      last_name: data.lastName,
-      full_name: `${data.firstName} ${data.lastName}`,
-      role: 'student',
-      class: data.className,
-      generated_login: login,
-      generated_password: password,
-      email: email, // Сохраняем email для логина
-    })
-    .select()
-    .single();
-
-  if (profileError) throw profileError;
-  return profile;
+  return result.student;
 }
 
 /**
@@ -222,6 +204,20 @@ export async function updateStudent(
   if (data.lastName) updates.last_name = data.lastName;
   if (data.className !== undefined) updates.class = data.className;
 
+  // Update full_name if first or last name changed
+  if (data.firstName || data.lastName) {
+    // Get current profile to construct full name
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('first_name, last_name')
+      .eq('id', id)
+      .single();
+
+    const firstName = data.firstName || currentProfile?.first_name || '';
+    const lastName = data.lastName || currentProfile?.last_name || '';
+    updates.full_name = `${firstName} ${lastName}`;
+  }
+
   const { data: profile, error } = await supabase
     .from('profiles')
     .update(updates)
@@ -234,12 +230,17 @@ export async function updateStudent(
 }
 
 /**
- * Delete student
+ * Delete student using Edge Function
+ * Edge Function использует Service Role Key для удаления auth пользователей
  */
 export async function deleteStudent(id: string): Promise<void> {
-  // Delete auth user (cascade will delete profile via FK)
-  const { error } = await supabase.auth.admin.deleteUser(id);
+  // Call Edge Function to delete student
+  const { data: result, error } = await supabase.functions.invoke('delete-student', {
+    body: { studentId: id },
+  });
+
   if (error) throw error;
+  if (!result?.success) throw new Error(result?.error || 'Failed to delete student');
 }
 
 /**

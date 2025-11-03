@@ -8,9 +8,12 @@ export interface Profile {
   id: string;
   first_name: string;
   last_name: string;
+  full_name?: string;
   class?: string;
   role: Role;
   generated_login?: string;
+  email?: string;
+  generated_password?: string;
   created_at: string;
   updated_at: string;
 }
@@ -43,13 +46,16 @@ export interface TestCase {
 
 export interface UserProgress {
   id: string;
-  user_id: string;
+  student_id: string;
   level_id: string;
   status: LevelStatus;
-  attempts: number;
-  last_solution?: string;
+  best_attempt_id?: string;
+  attempts_count: number;
+  hints_used?: string[];
+  time_spent_seconds: number;
   completed_at?: string;
-  created_at: string;
+  started_at?: string;
+  updated_at: string;
 }
 
 export interface Submission {
@@ -57,7 +63,9 @@ export interface Submission {
   user_id: string;
   level_id: string;
   code: string;
-  is_correct: boolean;
-  ai_feedback?: string;
+  status: 'pending' | 'passed' | 'failed';
   submitted_at: string;
+  completed_at?: string;
+  created_at: string;
+  updated_at: string;
 }

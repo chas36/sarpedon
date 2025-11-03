@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getStudentWithProgress, deleteStudent, resetPassword } from '@/features/teacher/api/studentsApi';
+import { getStudentWithProgress, deleteStudent, resetPassword, updateStudent } from '@/features/teacher/api/studentsApi';
 import type { StudentWithProgress } from '@/features/teacher/api/studentsApi';
 import { Button, Spinner } from '@/shared/components/ui';
 
@@ -11,6 +11,12 @@ export function StudentDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    firstName: '',
+    lastName: '',
+    className: '',
+  });
 
   useEffect(() => {
     if (id) {
@@ -26,12 +32,48 @@ export function StudentDetailsPage() {
       setError(null);
       const data = await getStudentWithProgress(id);
       setStudent(data);
+      setEditForm({
+        firstName: data.first_name,
+        lastName: data.last_name,
+        className: data.class || '',
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось загрузить данные ученика');
     } finally {
       setLoading(false);
     }
   }
+
+  const handleStartEdit = () => {
+    if (!student) return;
+    setEditForm({
+      firstName: student.first_name,
+      lastName: student.last_name,
+      className: student.class || '',
+    });
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!id) return;
+
+    try {
+      await updateStudent(id, {
+        firstName: editForm.firstName,
+        lastName: editForm.lastName,
+        className: editForm.className,
+      });
+      setIsEditing(false);
+      loadStudent();
+      alert('Данные успешно обновлены');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Ошибка обновления данных');
+    }
+  };
 
   const handleResetPassword = async () => {
     if (!id || !student) return;
@@ -102,20 +144,66 @@ export function StudentDetailsPage() {
           <Button variant="ghost" onClick={() => navigate('/teacher/students')}>
             ← Назад
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-admin-text">
-              {student.first_name} {student.last_name}
-            </h1>
-            <p className="text-admin-muted mt-1">Класс: {student.class || 'Не указан'}</p>
+          <div className="flex-1">
+            {isEditing ? (
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={editForm.firstName}
+                    onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
+                    placeholder="Имя"
+                    className="px-3 py-2 bg-admin-bg border border-admin-muted/20 rounded-lg text-admin-text"
+                  />
+                  <input
+                    type="text"
+                    value={editForm.lastName}
+                    onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
+                    placeholder="Фамилия"
+                    className="px-3 py-2 bg-admin-bg border border-admin-muted/20 rounded-lg text-admin-text"
+                  />
+                </div>
+                <input
+                  type="text"
+                  value={editForm.className}
+                  onChange={(e) => setEditForm({ ...editForm, className: e.target.value })}
+                  placeholder="Класс"
+                  className="px-3 py-2 bg-admin-bg border border-admin-muted/20 rounded-lg text-admin-text"
+                />
+              </div>
+            ) : (
+              <div>
+                <h1 className="text-3xl font-bold text-admin-text">
+                  {student.first_name} {student.last_name}
+                </h1>
+                <p className="text-admin-muted mt-1">Класс: {student.class || 'Не указан'}</p>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={handleResetPassword}>
-            Сбросить пароль
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleDelete}>
-            Удалить
-          </Button>
+          {isEditing ? (
+            <>
+              <Button variant="primary" size="sm" onClick={handleSaveEdit}>
+                Сохранить
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
+                Отмена
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="secondary" size="sm" onClick={handleStartEdit}>
+                Редактировать
+              </Button>
+              <Button variant="secondary" size="sm" onClick={handleResetPassword}>
+                Сбросить пароль
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleDelete}>
+                Удалить
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

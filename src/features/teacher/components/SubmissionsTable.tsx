@@ -97,9 +97,13 @@ export function SubmissionsTable({
                 </td>
               )}
               <td className="px-6 py-4">
-                {submission.is_correct ? (
+                {submission.status === 'passed' ? (
                   <span className="px-2 py-1 text-xs rounded bg-learning-success/20 text-learning-success">
                     ✓ Верно
+                  </span>
+                ) : submission.status === 'pending' ? (
+                  <span className="px-2 py-1 text-xs rounded bg-yellow-500/20 text-yellow-400">
+                    ⏳ Ожидание
                   </span>
                 ) : (
                   <span className="px-2 py-1 text-xs rounded bg-learning-error/20 text-learning-error">

@@ -34,10 +34,10 @@ export async function getOverallStatistics(): Promise<{
   // Get all submissions
   const { data: submissions } = await supabase
     .from('submissions')
-    .select('is_correct, user_id, submitted_at');
+    .select('status, user_id, submitted_at');
 
   const totalSubmissions = submissions?.length || 0;
-  const successfulSubmissions = submissions?.filter(s => s.is_correct).length || 0;
+  const successfulSubmissions = submissions?.filter(s => s.status === 'passed').length || 0;
   const averageSuccessRate = calculateSuccessRate(successfulSubmissions, totalSubmissions);
 
   // Get active students in last 7 days
@@ -81,21 +81,21 @@ export async function getTopStudents(limit: number = 10): Promise<
   // Get progress for all students
   const { data: progress } = await supabase
     .from('level_progress')
-    .select('user_id, status');
+    .select('student_id, status');
 
   // Get submissions for success rate
   const { data: submissions } = await supabase
     .from('submissions')
-    .select('user_id, is_correct');
+    .select('user_id, status');
 
   // Calculate stats for each student
   const studentsWithStats = students.map(student => {
-    const studentProgress = progress?.filter(p => p.user_id === student.id) || [];
+    const studentProgress = progress?.filter(p => p.student_id === student.id) || [];
     const completedLevels = studentProgress.filter(p => p.status === 'completed').length;
 
     const studentSubmissions = submissions?.filter(s => s.user_id === student.id) || [];
     const successRate = calculateSuccessRate(
-      studentSubmissions.filter(s => s.is_correct).length,
+      studentSubmissions.filter(s => s.status === 'passed').length,
       studentSubmissions.length
     );
 
@@ -141,12 +141,12 @@ export async function getStrugglingStudents(): Promise<
   // 2. Get progress for all students
   const { data: progress } = await supabase
     .from('level_progress')
-    .select('user_id, status');
+    .select('student_id, status');
 
   // 3. Get submissions for success rate and last activity
   const { data: submissions } = await supabase
     .from('submissions')
-    .select('user_id, is_correct, submitted_at')
+    .select('user_id, status, submitted_at')
     .order('submitted_at', { ascending: false });
 
   // 4. Calculate stats and identify struggling students
@@ -156,7 +156,7 @@ export async function getStrugglingStudents(): Promise<
 
     const studentSubmissions = submissions?.filter(s => s.user_id === student.id) || [];
     const successRate = calculateSuccessRate(
-      studentSubmissions.filter(s => s.is_correct).length,
+      studentSubmissions.filter(s => s.status === 'passed').length,
       studentSubmissions.length
     );
 
@@ -277,7 +277,7 @@ export async function getStudentsDistribution(): Promise<{
   // Get progress for all students
   const { data: progress } = await supabase
     .from('level_progress')
-    .select('user_id, status');
+    .select('student_id, status');
 
   // Calculate completed levels for each student
   const studentsWithProgress = students.map(student => {
@@ -394,7 +394,7 @@ export async function getStudentLevelProgress(
       0
     );
     const lastSubmission = levelSubmissions[0] || null;
-    const isCorrect = levelSubmissions.some(s => s.is_correct);
+    const isCorrect = levelSubmissions.some(s => s.status === 'passed');
 
     let status: 'not_started' | 'in_progress' | 'completed' = 'not_started';
     if (levelProgress) {
@@ -453,7 +453,7 @@ export async function getStudentTimeMetrics(
     .from('submissions')
     .select('execution_time_ms')
     .eq('user_id', studentId)
-    .eq('is_correct', true)
+    .eq('status', 'passed')
     .not('execution_time_ms', 'is', null);
 
   if (!submissions || submissions.length === 0) {
@@ -500,7 +500,7 @@ export async function getAllLevelsStatistics(): Promise<
   // Get all submissions
   const { data: submissions } = await supabase
     .from('submissions')
-    .select('level_id, user_id, is_correct');
+    .select('level_id, user_id, status');
 
   if (!submissions) return levels.map(l => ({
     level: l,
@@ -516,7 +516,7 @@ export async function getAllLevelsStatistics(): Promise<
     const levelSubmissions = submissions.filter(s => s.level_id === level.id);
     const totalAttempts = levelSubmissions.length;
     const uniqueStudents = new Set(levelSubmissions.map(s => s.user_id)).size;
-    const completedCount = levelSubmissions.filter(s => s.is_correct).length;
+    const completedCount = levelSubmissions.filter(s => s.status === 'passed').length;
     const successRate = calculateSuccessRate(completedCount, totalAttempts);
     const averageAttempts = uniqueStudents > 0 ? totalAttempts / uniqueStudents : 0;
 
@@ -592,7 +592,7 @@ export async function getLevelStatistics(levelId: string): Promise<{
   // Calculate basic stats
   const totalAttempts = submissions.length;
   const uniqueStudents = new Set(submissions.map(s => s.user_id)).size;
-  const completedCount = submissions.filter(s => s.is_correct).length;
+  const completedCount = submissions.filter(s => s.status === 'passed').length;
   const successRate = calculateSuccessRate(completedCount, totalAttempts);
   const averageAttempts = uniqueStudents > 0 ? totalAttempts / uniqueStudents : 0;
 
@@ -615,7 +615,7 @@ export async function getLevelStatistics(levelId: string): Promise<{
     }
     const studentData = studentMap.get(s.user_id)!;
     studentData.attempts++;
-    if (s.is_correct) studentData.isCorrect = true;
+    if (s.status === 'passed') studentData.isCorrect = true;
   });
 
   const studentSubmissions = Array.from(studentMap.values());
@@ -737,7 +737,7 @@ export async function getClassStatistics(className: string): Promise<{
   // Get submissions for students in this class
   const { data: submissions } = await supabase
     .from('submissions')
-    .select('user_id, is_correct, submitted_at')
+    .select('user_id, status, submitted_at')
     .in('user_id', students.map(s => s.id));
 
   // Calculate stats for each student
@@ -747,7 +747,7 @@ export async function getClassStatistics(className: string): Promise<{
 
     const studentSubmissions = submissions?.filter(s => s.user_id === student.id) || [];
     const successRate = calculateSuccessRate(
-      studentSubmissions.filter(s => s.is_correct).length,
+      studentSubmissions.filter(s => s.status === 'passed').length,
       studentSubmissions.length
     );
 
