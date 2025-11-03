@@ -679,3 +679,213 @@ export async function getLevelRecentSubmissions(
     student: s.profiles,
   }));
 }
+
+/**
+ * Get comprehensive statistics for a class
+ */
+export async function getClassStatistics(className: string): Promise<{
+  className: string;
+  totalStudents: number;
+  averageCompletedLevels: number;
+  averageSuccessRate: number;
+  activeStudentsLast7Days: number;
+  distribution: {
+    '0-25': number;
+    '25-50': number;
+    '50-75': number;
+    '75-100': number;
+  };
+  students: Array<{
+    student: Profile;
+    completedLevels: number;
+    totalLevels: number;
+    successRate: number;
+    lastActivity: string | null;
+    rank: number;
+  }>;
+}> {
+  // Get all students in the class
+  const { data: students } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('role', 'student')
+    .eq('class', className);
+
+  if (!students || students.length === 0) {
+    return {
+      className,
+      totalStudents: 0,
+      averageCompletedLevels: 0,
+      averageSuccessRate: 0,
+      activeStudentsLast7Days: 0,
+      distribution: { '0-25': 0, '25-50': 0, '50-75': 0, '75-100': 0 },
+      students: [],
+    };
+  }
+
+  // Get total levels count
+  const { count: totalLevels } = await supabase
+    .from('levels')
+    .select('*', { count: 'exact', head: true });
+
+  // Get progress for students in this class
+  const { data: progress } = await supabase
+    .from('level_progress')
+    .select('user_id, status')
+    .in('user_id', students.map(s => s.id));
+
+  // Get submissions for students in this class
+  const { data: submissions } = await supabase
+    .from('submissions')
+    .select('user_id, is_correct, submitted_at')
+    .in('user_id', students.map(s => s.id));
+
+  // Calculate stats for each student
+  const studentsWithStats = students.map(student => {
+    const studentProgress = progress?.filter(p => p.user_id === student.id) || [];
+    const completedLevels = studentProgress.filter(p => p.status === 'completed').length;
+
+    const studentSubmissions = submissions?.filter(s => s.user_id === student.id) || [];
+    const successRate = calculateSuccessRate(
+      studentSubmissions.filter(s => s.is_correct).length,
+      studentSubmissions.length
+    );
+
+    const lastActivity = studentSubmissions.length > 0
+      ? studentSubmissions.sort((a, b) =>
+          new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()
+        )[0].submitted_at
+      : null;
+
+    return {
+      student,
+      completedLevels,
+      totalLevels: totalLevels || 0,
+      successRate,
+      lastActivity,
+    };
+  });
+
+  // Sort by completed levels and add ranks
+  const rankedStudents = studentsWithStats
+    .sort((a, b) => {
+      if (b.completedLevels !== a.completedLevels) {
+        return b.completedLevels - a.completedLevels;
+      }
+      return b.successRate - a.successRate;
+    })
+    .map((s, index) => ({ ...s, rank: index + 1 }));
+
+  // Calculate average metrics
+  const averageCompletedLevels = studentsWithStats.reduce(
+    (sum, s) => sum + s.completedLevels,
+    0
+  ) / students.length;
+
+  const averageSuccessRate = Math.round(
+    studentsWithStats.reduce((sum, s) => sum + s.successRate, 0) / students.length
+  );
+
+  // Calculate active students in last 7 days
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const activeStudentsLast7Days = studentsWithStats.filter(s =>
+    s.lastActivity && new Date(s.lastActivity) >= sevenDaysAgo
+  ).length;
+
+  // Calculate distribution
+  const distribution = groupStudentsByProgress(
+    studentsWithStats.map(s => ({
+      completedLevels: s.completedLevels,
+      totalLevels: s.totalLevels,
+    }))
+  );
+
+  return {
+    className,
+    totalStudents: students.length,
+    averageCompletedLevels: Math.round(averageCompletedLevels * 10) / 10,
+    averageSuccessRate,
+    activeStudentsLast7Days,
+    distribution,
+    students: rankedStudents,
+  };
+}
+
+/**
+ * Get class progress over time
+ */
+export async function getClassProgressOverTime(
+  className: string,
+  days: number = 30
+): Promise<Array<{ date: string; count: number }>> {
+  // Get students in the class
+  const { data: students } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'student')
+    .eq('class', className);
+
+  if (!students || students.length === 0) return [];
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  // Get progress completions for these students
+  const { data: progress } = await supabase
+    .from('level_progress')
+    .select('created_at')
+    .in('user_id', students.map(s => s.id))
+    .eq('status', 'completed')
+    .gte('created_at', startDate.toISOString());
+
+  if (!progress) return [];
+
+  // Aggregate by day
+  const activityByDay = aggregateActivityByDay(
+    progress.map(p => ({ submitted_at: p.created_at }))
+  );
+
+  // Fill missing days
+  return fillMissingDays(activityByDay, days);
+}
+
+/**
+ * Get class activity over time
+ */
+export async function getClassActivity(
+  className: string,
+  days: number = 60
+): Promise<Array<{ date: string; activityCount: number }>> {
+  // Get students in the class
+  const { data: students } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'student')
+    .eq('class', className);
+
+  if (!students || students.length === 0) return [];
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  // Get submissions for these students
+  const { data: submissions } = await supabase
+    .from('submissions')
+    .select('submitted_at')
+    .in('user_id', students.map(s => s.id))
+    .gte('submitted_at', startDate.toISOString());
+
+  if (!submissions) return [];
+
+  // Aggregate by day
+  const activityByDay = aggregateActivityByDay(submissions);
+
+  // Fill missing days and rename field
+  const filledData = fillMissingDays(activityByDay, days);
+
+  return filledData.map(d => ({
+    date: d.date,
+    activityCount: d.count,
+  }));
+}
