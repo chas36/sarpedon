@@ -5,17 +5,15 @@ export async function login(credentials: LoginCredentials) {
   // Пользователи входят по логину, но Supabase требует email
   let email = credentials.login;
 
-  // Если это не email (нет @), пробуем найти email в профиле
+  // Если это не email (нет @), пробуем найти email в профиле через secure function
   if (!email.includes('@')) {
     try {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('generated_login', credentials.login)
-        .maybeSingle(); // maybeSingle() не выдаёт ошибку если нет результата
+      const { data, error } = await supabase.rpc('lookup_email_by_login', {
+        login_input: credentials.login
+      });
 
-      if (!profileError && profile?.email) {
-        email = profile.email;
+      if (!error && data) {
+        email = data;
       }
     } catch (e) {
       // Игнорируем ошибки, используем логин как есть
