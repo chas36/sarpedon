@@ -2,11 +2,26 @@ import { supabase } from '@/shared/lib/supabase';
 import type { LoginCredentials } from '@/shared/types';
 
 export async function login(credentials: LoginCredentials) {
-  // Check if login is already an email (contains @)
-  // If yes, use it directly. If not, append @students.sarpedon.edu
-  const email = credentials.login.includes('@')
-    ? credentials.login
-    : `${credentials.login}@students.sarpedon.edu`;
+  // Пользователи входят по логину, но Supabase требует email
+  // Если это уже email - используем его, если нет - ищем по логину в профиле
+  let email = credentials.login;
+
+  if (!email.includes('@')) {
+    // Это логин, нужно найти email в profiles
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('generated_login', credentials.login)
+      .single();
+
+    if (profile?.email) {
+      email = profile.email;
+    } else {
+      // Если профиль не найден, пытаемся войти как есть
+      // (может быть teacher с реальным email)
+      email = credentials.login;
+    }
+  }
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email,

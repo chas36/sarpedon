@@ -138,12 +138,16 @@ export async function createStudent(data: {
   const login = data.login || await generateUniqueLogin();
   const password = data.password || login;
 
-  // Create auth user with temporary email (using .edu for valid email format)
-  const email = `${login}@students.sarpedon.edu`;
+  // Email требуется только для Supabase Auth (пользователи входят по логину)
+  // Используем простой формат: student{timestamp}@test.com для уникальности
+  const email = `student${Date.now()}@test.com`;
 
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: undefined, // Не отправлять email подтверждения
+    },
   });
 
   if (authError) throw authError;
@@ -156,10 +160,12 @@ export async function createStudent(data: {
       id: authData.user.id,
       first_name: data.firstName,
       last_name: data.lastName,
+      full_name: `${data.firstName} ${data.lastName}`,
       role: 'student',
       class: data.className,
       generated_login: login,
       generated_password: password,
+      email: email, // Сохраняем email для логина
     })
     .select()
     .single();
