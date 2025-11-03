@@ -475,3 +475,207 @@ export async function getStudentTimeMetrics(
     slowestSolveTime,
   };
 }
+
+/**
+ * Get statistics for all levels
+ */
+export async function getAllLevelsStatistics(): Promise<
+  Array<{
+    level: Level;
+    totalAttempts: number;
+    uniqueStudents: number;
+    completedCount: number;
+    successRate: number;
+    averageAttempts: number;
+  }>
+> {
+  // Get all levels
+  const { data: levels } = await supabase
+    .from('levels')
+    .select('*')
+    .order('order_index', { ascending: true });
+
+  if (!levels) return [];
+
+  // Get all submissions
+  const { data: submissions } = await supabase
+    .from('submissions')
+    .select('level_id, user_id, is_correct');
+
+  if (!submissions) return levels.map(l => ({
+    level: l,
+    totalAttempts: 0,
+    uniqueStudents: 0,
+    completedCount: 0,
+    successRate: 0,
+    averageAttempts: 0,
+  }));
+
+  // Calculate stats for each level
+  return levels.map(level => {
+    const levelSubmissions = submissions.filter(s => s.level_id === level.id);
+    const totalAttempts = levelSubmissions.length;
+    const uniqueStudents = new Set(levelSubmissions.map(s => s.user_id)).size;
+    const completedCount = levelSubmissions.filter(s => s.is_correct).length;
+    const successRate = calculateSuccessRate(completedCount, totalAttempts);
+    const averageAttempts = uniqueStudents > 0 ? totalAttempts / uniqueStudents : 0;
+
+    return {
+      level,
+      totalAttempts,
+      uniqueStudents,
+      completedCount,
+      successRate,
+      averageAttempts: Math.round(averageAttempts * 10) / 10,
+    };
+  });
+}
+
+/**
+ * Get detailed statistics for a specific level
+ */
+export async function getLevelStatistics(levelId: string): Promise<{
+  level: Level;
+  totalAttempts: number;
+  uniqueStudents: number;
+  completedCount: number;
+  successRate: number;
+  averageAttempts: number;
+  attemptsDistribution: {
+    '1': number;
+    '2-3': number;
+    '4-5': number;
+    '6+': number;
+    'unsolved': number;
+  };
+  submissions: Array<{
+    student: Profile;
+    attempts: number;
+    isCorrect: boolean;
+    lastSubmittedAt: string;
+  }>;
+}> {
+  // Get level
+  const { data: level } = await supabase
+    .from('levels')
+    .select('*')
+    .eq('id', levelId)
+    .single();
+
+  if (!level) {
+    throw new Error('Level not found');
+  }
+
+  // Get all submissions for this level with student data
+  const { data: submissions } = await supabase
+    .from('submissions')
+    .select(`
+      *,
+      profiles(*)
+    `)
+    .eq('level_id', levelId)
+    .order('submitted_at', { ascending: false });
+
+  if (!submissions || submissions.length === 0) {
+    return {
+      level,
+      totalAttempts: 0,
+      uniqueStudents: 0,
+      completedCount: 0,
+      successRate: 0,
+      averageAttempts: 0,
+      attemptsDistribution: { '1': 0, '2-3': 0, '4-5': 0, '6+': 0, 'unsolved': 0 },
+      submissions: [],
+    };
+  }
+
+  // Calculate basic stats
+  const totalAttempts = submissions.length;
+  const uniqueStudents = new Set(submissions.map(s => s.user_id)).size;
+  const completedCount = submissions.filter(s => s.is_correct).length;
+  const successRate = calculateSuccessRate(completedCount, totalAttempts);
+  const averageAttempts = uniqueStudents > 0 ? totalAttempts / uniqueStudents : 0;
+
+  // Group by student
+  const studentMap = new Map<string, {
+    student: Profile;
+    attempts: number;
+    isCorrect: boolean;
+    lastSubmittedAt: string;
+  }>();
+
+  submissions.forEach(s => {
+    if (!studentMap.has(s.user_id)) {
+      studentMap.set(s.user_id, {
+        student: s.profiles,
+        attempts: 0,
+        isCorrect: false,
+        lastSubmittedAt: s.submitted_at,
+      });
+    }
+    const studentData = studentMap.get(s.user_id)!;
+    studentData.attempts++;
+    if (s.is_correct) studentData.isCorrect = true;
+  });
+
+  const studentSubmissions = Array.from(studentMap.values());
+
+  // Calculate attempts distribution
+  const attemptsDistribution = {
+    '1': 0,
+    '2-3': 0,
+    '4-5': 0,
+    '6+': 0,
+    'unsolved': 0,
+  };
+
+  studentSubmissions.forEach(s => {
+    if (!s.isCorrect) {
+      attemptsDistribution['unsolved']++;
+    } else if (s.attempts === 1) {
+      attemptsDistribution['1']++;
+    } else if (s.attempts <= 3) {
+      attemptsDistribution['2-3']++;
+    } else if (s.attempts <= 5) {
+      attemptsDistribution['4-5']++;
+    } else {
+      attemptsDistribution['6+']++;
+    }
+  });
+
+  return {
+    level,
+    totalAttempts,
+    uniqueStudents,
+    completedCount,
+    successRate,
+    averageAttempts: Math.round(averageAttempts * 10) / 10,
+    attemptsDistribution,
+    submissions: studentSubmissions,
+  };
+}
+
+/**
+ * Get recent submissions for a level
+ */
+export async function getLevelRecentSubmissions(
+  levelId: string,
+  limit: number = 20
+): Promise<Array<Submission & { student: Profile }>> {
+  const { data: submissions } = await supabase
+    .from('submissions')
+    .select(`
+      *,
+      profiles(*)
+    `)
+    .eq('level_id', levelId)
+    .order('submitted_at', { ascending: false })
+    .limit(limit);
+
+  if (!submissions) return [];
+
+  return submissions.map(s => ({
+    ...s,
+    student: s.profiles,
+  }));
+}
