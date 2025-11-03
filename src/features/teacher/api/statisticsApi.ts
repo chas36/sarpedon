@@ -6,6 +6,7 @@ import {
   identifyStrugglingStudents,
   groupStudentsByProgress,
   aggregateActivityByDay,
+  calculateAverageTime,
 } from '../utils/statsCalculations';
 import { fillMissingDays } from '../utils/dateUtils';
 
@@ -322,4 +323,155 @@ export async function getAggregatedActivity(days: number = 60): Promise<
     date: d.date,
     activityCount: d.count,
   }));
+}
+
+/**
+ * Get all submissions for a student with level data
+ */
+export async function getStudentSubmissions(
+  studentId: string
+): Promise<Array<Submission & { level: Level }>> {
+  const { data: submissions } = await supabase
+    .from('submissions')
+    .select(`
+      *,
+      levels(*)
+    `)
+    .eq('user_id', studentId)
+    .order('submitted_at', { ascending: false });
+
+  if (!submissions) return [];
+
+  return submissions.map(s => ({
+    ...s,
+    level: s.levels,
+  }));
+}
+
+/**
+ * Get student progress for each level
+ */
+export async function getStudentLevelProgress(
+  studentId: string
+): Promise<
+  Array<{
+    level: Level;
+    status: 'not_started' | 'in_progress' | 'completed';
+    attempts: number;
+    timeSpent: number;
+    lastAttempt: string | null;
+    isCorrect: boolean;
+  }>
+> {
+  // Get all levels
+  const { data: levels } = await supabase
+    .from('levels')
+    .select('*')
+    .order('order_index', { ascending: true });
+
+  if (!levels) return [];
+
+  // Get student's progress
+  const { data: progress } = await supabase
+    .from('level_progress')
+    .select('*')
+    .eq('user_id', studentId);
+
+  // Get student's submissions
+  const { data: submissions } = await supabase
+    .from('submissions')
+    .select('*')
+    .eq('user_id', studentId);
+
+  // Build progress for each level
+  return levels.map(level => {
+    const levelProgress = progress?.find(p => p.level_id === level.id);
+    const levelSubmissions = submissions?.filter(s => s.level_id === level.id) || [];
+
+    const attempts = levelSubmissions.length;
+    const timeSpent = levelSubmissions.reduce(
+      (sum, s) => sum + (s.execution_time_ms || 0),
+      0
+    );
+    const lastSubmission = levelSubmissions[0] || null;
+    const isCorrect = levelSubmissions.some(s => s.is_correct);
+
+    let status: 'not_started' | 'in_progress' | 'completed' = 'not_started';
+    if (levelProgress) {
+      status = levelProgress.status as 'not_started' | 'in_progress' | 'completed';
+    } else if (attempts > 0) {
+      status = 'in_progress';
+    }
+
+    return {
+      level,
+      status,
+      attempts,
+      timeSpent,
+      lastAttempt: lastSubmission?.submitted_at || null,
+      isCorrect,
+    };
+  });
+}
+
+/**
+ * Get student activity over time
+ */
+export async function getStudentActivity(
+  studentId: string,
+  days: number = 30
+): Promise<Array<{ date: string; count: number }>> {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  const { data: submissions } = await supabase
+    .from('submissions')
+    .select('submitted_at')
+    .eq('user_id', studentId)
+    .gte('submitted_at', startDate.toISOString());
+
+  if (!submissions) return [];
+
+  // Aggregate by day
+  const activityByDay = aggregateActivityByDay(submissions);
+
+  // Fill missing days
+  return fillMissingDays(activityByDay, days);
+}
+
+/**
+ * Get time metrics for student
+ */
+export async function getStudentTimeMetrics(
+  studentId: string
+): Promise<{
+  averageSolveTime: number;
+  fastestSolveTime: number;
+  slowestSolveTime: number;
+}> {
+  const { data: submissions } = await supabase
+    .from('submissions')
+    .select('execution_time_ms')
+    .eq('user_id', studentId)
+    .eq('is_correct', true)
+    .not('execution_time_ms', 'is', null);
+
+  if (!submissions || submissions.length === 0) {
+    return {
+      averageSolveTime: 0,
+      fastestSolveTime: 0,
+      slowestSolveTime: 0,
+    };
+  }
+
+  const times = submissions.map(s => s.execution_time_ms!);
+  const averageSolveTime = calculateAverageTime(submissions);
+  const fastestSolveTime = Math.min(...times);
+  const slowestSolveTime = Math.max(...times);
+
+  return {
+    averageSolveTime,
+    fastestSolveTime,
+    slowestSolveTime,
+  };
 }
