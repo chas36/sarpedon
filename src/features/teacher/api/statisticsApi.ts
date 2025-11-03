@@ -1,6 +1,13 @@
 import { supabase } from '@/shared/lib/supabase';
 import type { Profile, Level, Submission } from '@/shared/types';
-import { calculateSuccessRate, calculateCompletionRate } from '../utils/statsCalculations';
+import {
+  calculateSuccessRate,
+  calculateCompletionRate,
+  identifyStrugglingStudents,
+  groupStudentsByProgress,
+  aggregateActivityByDay,
+} from '../utils/statsCalculations';
+import { fillMissingDays } from '../utils/dateUtils';
 
 /**
  * Get overall statistics for all students
@@ -108,4 +115,211 @@ export async function getTopStudents(limit: number = 10): Promise<
     })
     .slice(0, limit)
     .map((s, index) => ({ ...s, rank: index + 1 }));
+}
+
+/**
+ * Get struggling students who need attention
+ */
+export async function getStrugglingStudents(): Promise<
+  Array<{
+    student: Profile;
+    completedLevels: number;
+    successRate: number;
+    lastActivityDate: string | null;
+    issue: 'low_success' | 'low_activity' | 'inactive';
+  }>
+> {
+  // 1. Get all students
+  const { data: students } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('role', 'student');
+
+  if (!students) return [];
+
+  // 2. Get progress for all students
+  const { data: progress } = await supabase
+    .from('level_progress')
+    .select('user_id, status');
+
+  // 3. Get submissions for success rate and last activity
+  const { data: submissions } = await supabase
+    .from('submissions')
+    .select('user_id, is_correct, submitted_at')
+    .order('submitted_at', { ascending: false });
+
+  // 4. Calculate stats and identify struggling students
+  const studentsWithStats = students.map(student => {
+    const studentProgress = progress?.filter(p => p.user_id === student.id) || [];
+    const completedLevels = studentProgress.filter(p => p.status === 'completed').length;
+
+    const studentSubmissions = submissions?.filter(s => s.user_id === student.id) || [];
+    const successRate = calculateSuccessRate(
+      studentSubmissions.filter(s => s.is_correct).length,
+      studentSubmissions.length
+    );
+
+    const lastActivity = studentSubmissions[0]?.submitted_at || null;
+
+    return {
+      ...student,
+      completedLevels,
+      successRate,
+      lastActivity,
+    };
+  });
+
+  // 5. Use identifyStrugglingStudents utility
+  const strugglingStudents = identifyStrugglingStudents(studentsWithStats, {
+    minSuccessRate: 50,
+    minCompletedLevels: 3,
+    inactiveDays: 7,
+  });
+
+  // 6. Format result to match expected return type
+  return strugglingStudents.map(s => ({
+    student: {
+      id: s.id,
+      email: s.email,
+      full_name: s.full_name,
+      role: s.role,
+      created_at: s.created_at,
+      updated_at: s.updated_at,
+    },
+    completedLevels: s.completedLevels || 0,
+    successRate: s.successRate || 0,
+    lastActivityDate: s.lastActivity || null,
+    issue: s.issue,
+  }));
+}
+
+/**
+ * Get recent activity across the platform
+ */
+export async function getRecentActivity(limit: number = 20): Promise<
+  Array<{
+    submission: Submission;
+    student: Profile;
+    level: Level;
+  }>
+> {
+  const { data: submissions } = await supabase
+    .from('submissions')
+    .select(`
+      *,
+      profiles(*),
+      levels(*)
+    `)
+    .order('submitted_at', { ascending: false })
+    .limit(limit);
+
+  if (!submissions) return [];
+
+  return submissions.map(s => ({
+    submission: s,
+    student: s.profiles,
+    level: s.levels,
+  }));
+}
+
+/**
+ * Get progress over time for all students
+ */
+export async function getProgressOverTime(days: number = 30): Promise<
+  Array<{
+    date: string;
+    count: number;
+  }>
+> {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  const { data: progress } = await supabase
+    .from('level_progress')
+    .select('created_at, status')
+    .eq('status', 'completed')
+    .gte('created_at', startDate.toISOString());
+
+  if (!progress) return [];
+
+  // Aggregate by day
+  const activityByDay = aggregateActivityByDay(
+    progress.map(p => ({ submitted_at: p.created_at }))
+  );
+
+  // Fill missing days
+  return fillMissingDays(activityByDay, days);
+}
+
+/**
+ * Get distribution of students by progress percentage
+ */
+export async function getStudentsDistribution(): Promise<{
+  '0-25': number;
+  '25-50': number;
+  '50-75': number;
+  '75-100': number;
+}> {
+  // Get all students
+  const { data: students } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'student');
+
+  if (!students) return { '0-25': 0, '25-50': 0, '50-75': 0, '75-100': 0 };
+
+  // Get total levels count
+  const { count: totalLevels } = await supabase
+    .from('levels')
+    .select('*', { count: 'exact', head: true });
+
+  // Get progress for all students
+  const { data: progress } = await supabase
+    .from('level_progress')
+    .select('user_id, status');
+
+  // Calculate completed levels for each student
+  const studentsWithProgress = students.map(student => {
+    const studentProgress = progress?.filter(p => p.user_id === student.id) || [];
+    const completedLevels = studentProgress.filter(p => p.status === 'completed').length;
+
+    return {
+      completedLevels,
+      totalLevels: totalLevels || 1,
+    };
+  });
+
+  // Use groupStudentsByProgress utility
+  return groupStudentsByProgress(studentsWithProgress);
+}
+
+/**
+ * Get aggregated activity for heatmap
+ */
+export async function getAggregatedActivity(days: number = 60): Promise<
+  Array<{
+    date: string;
+    activityCount: number;
+  }>
+> {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  const { data: submissions } = await supabase
+    .from('submissions')
+    .select('submitted_at')
+    .gte('submitted_at', startDate.toISOString());
+
+  if (!submissions) return [];
+
+  // Aggregate by day
+  const activityByDay = aggregateActivityByDay(submissions);
+
+  // Fill missing days and rename field
+  const filledData = fillMissingDays(activityByDay, days);
+
+  return filledData.map(d => ({
+    date: d.date,
+    activityCount: d.count,
+  }));
 }
