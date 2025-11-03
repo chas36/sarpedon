@@ -138,8 +138,8 @@ export async function createStudent(data: {
   const login = data.login || await generateUniqueLogin();
   const password = data.password || login;
 
-  // Create auth user with temporary email
-  const email = `${login}@sarpedon.local`;
+  // Create auth user with temporary email (using .edu for valid email format)
+  const email = `${login}@students.sarpedon.edu`;
 
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,

@@ -3,10 +3,10 @@ import type { LoginCredentials } from '@/shared/types';
 
 export async function login(credentials: LoginCredentials) {
   // Check if login is already an email (contains @)
-  // If yes, use it directly. If not, append @sarpedon.local
+  // If yes, use it directly. If not, append @students.sarpedon.edu
   const email = credentials.login.includes('@')
     ? credentials.login
-    : `${credentials.login}@sarpedon.local`;
+    : `${credentials.login}@students.sarpedon.edu`;
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
