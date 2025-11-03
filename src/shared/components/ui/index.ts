@@ -7,3 +7,6 @@ export type { SpinnerProps } from './Spinner';
 export { CodeEditor } from './CodeEditor';
 
 export { Modal } from './Modal';
+
+export { Card } from './Card';
+export type { CardProps } from './Card';

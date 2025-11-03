@@ -1,7 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getStudentWithProgress, type StudentWithProgress } from '@/features/teacher/api/studentsApi';
+import {
+  getStudentSubmissions,
+  getStudentLevelProgress,
+  getStudentActivity,
+  getStudentTimeMetrics,
+} from '@/features/teacher/api/statisticsApi';
+import { SubmissionsTable } from '@/features/teacher/components/SubmissionsTable';
+import { ProgressLineChart } from '@/features/teacher/components/charts/ProgressLineChart';
+import { formatTime, formatDate } from '@/features/teacher/utils/dateUtils';
 import { Button, Spinner } from '@/shared/components/ui';
+import type { Submission, Level } from '@/shared/types';
 
 export function StudentAnalyticsPage() {
   const { id } = useParams<{ id: string }>();
@@ -9,6 +19,21 @@ export function StudentAnalyticsPage() {
   const [student, setStudent] = useState<StudentWithProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [studentSubmissions, setStudentSubmissions] = useState<Array<Submission & { level: Level }>>([]);
+  const [levelProgress, setLevelProgress] = useState<Array<{
+    level: Level;
+    status: 'not_started' | 'in_progress' | 'completed';
+    attempts: number;
+    timeSpent: number;
+    lastAttempt: string | null;
+    isCorrect: boolean;
+  }>>([]);
+  const [studentActivity, setStudentActivity] = useState<Array<{ date: string; count: number }>>([]);
+  const [timeMetrics, setTimeMetrics] = useState<{
+    averageSolveTime: number;
+    fastestSolveTime: number;
+    slowestSolveTime: number;
+  } | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -20,8 +45,18 @@ export function StudentAnalyticsPage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await getStudentWithProgress(studentId);
+      const [data, submissions, progress, activity, metrics] = await Promise.all([
+        getStudentWithProgress(studentId),
+        getStudentSubmissions(studentId),
+        getStudentLevelProgress(studentId),
+        getStudentActivity(studentId, 30),
+        getStudentTimeMetrics(studentId),
+      ]);
       setStudent(data);
+      setStudentSubmissions(submissions);
+      setLevelProgress(progress);
+      setStudentActivity(activity);
+      setTimeMetrics(metrics);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось загрузить данные студента');
     } finally {
@@ -156,6 +191,90 @@ export function StudentAnalyticsPage() {
           Детальная история активности будет доступна в следующей версии
         </p>
       </div>
+
+      {/* История решений */}
+      <div className="bg-admin-surface rounded-lg p-6 border border-admin-muted/10">
+        <h2 className="text-xl font-semibold text-admin-text mb-4">
+          История решений
+        </h2>
+        <SubmissionsTable
+          submissions={studentSubmissions}
+          showStudent={false}
+          showLevel={true}
+        />
+      </div>
+
+      {/* Прогресс по уровням */}
+      <div className="bg-admin-surface rounded-lg p-6 border border-admin-muted/10">
+        <h2 className="text-xl font-semibold text-admin-text mb-4">
+          Прогресс по уровням
+        </h2>
+        <div className="space-y-2">
+          {levelProgress.map(lp => (
+            <div
+              key={lp.level.id}
+              className="flex items-center gap-4 p-3 bg-admin-bg rounded-lg"
+            >
+              <div className={`w-3 h-3 rounded-full ${
+                lp.status === 'completed' ? 'bg-learning-success' :
+                lp.status === 'in_progress' ? 'bg-yellow-400' :
+                'bg-admin-muted'
+              }`} />
+
+              <div className="flex-1">
+                <div className="font-medium text-admin-text">{lp.level.title}</div>
+                <div className="text-xs text-admin-muted">
+                  {lp.attempts} попыток • {formatTime(lp.timeSpent)}
+                </div>
+              </div>
+
+              <div className="text-sm text-admin-muted">
+                {lp.lastAttempt ? formatDate(lp.lastAttempt) : 'Не начато'}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* График активности */}
+      <div className="bg-admin-surface rounded-lg p-6 border border-admin-muted/10">
+        <h2 className="text-xl font-semibold text-admin-text mb-4">
+          Активность за последние 30 дней
+        </h2>
+        <ProgressLineChart
+          data={studentActivity}
+          label="Попыток решений"
+        />
+      </div>
+
+      {/* Временные метрики */}
+      {timeMetrics && (
+        <div className="bg-admin-surface rounded-lg p-6 border border-admin-muted/10">
+          <h2 className="text-xl font-semibold text-admin-text mb-4">
+            Временные метрики
+          </h2>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center py-2 border-b border-admin-muted/10">
+              <span className="text-admin-muted">Среднее время решения:</span>
+              <span className="text-admin-text font-medium">
+                {formatTime(timeMetrics.averageSolveTime)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-admin-muted/10">
+              <span className="text-admin-muted">Самое быстрое решение:</span>
+              <span className="text-admin-text font-medium">
+                {formatTime(timeMetrics.fastestSolveTime)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-admin-muted">Самое долгое решение:</span>
+              <span className="text-admin-text font-medium">
+                {formatTime(timeMetrics.slowestSolveTime)}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

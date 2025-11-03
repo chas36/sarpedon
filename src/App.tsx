@@ -9,6 +9,10 @@ import { LevelsManagePage } from './features/teacher/pages/LevelsManagePage';
 import { LevelEditorPage } from './features/teacher/pages/LevelEditorPage';
 import { StudentsPage } from './features/teacher/pages/StudentsPage';
 import { StudentDetailsPage } from './features/teacher/pages/StudentDetailsPage';
+import { StatisticsPage } from './features/teacher/pages/StatisticsPage';
+import { StudentAnalyticsPage } from './features/teacher/pages/StudentAnalyticsPage';
+import { LevelAnalyticsPage } from './features/teacher/pages/LevelAnalyticsPage';
+import { ClassAnalyticsPage } from './features/teacher/pages/ClassAnalyticsPage';
 import { useAuthStore } from './features/auth/store/authStore';
 import { getCurrentUser, getProfile } from './features/auth/api/authApi';
 import { Spinner } from './shared/components/ui';
@@ -112,10 +116,13 @@ function App() {
                   <Route index element={<TeacherDashboard />} />
                   <Route path="students" element={<StudentsPage />} />
                   <Route path="students/:id" element={<StudentDetailsPage />} />
+                  <Route path="students/:id/analytics" element={<StudentAnalyticsPage />} />
                   <Route path="levels" element={<LevelsManagePage />} />
                   <Route path="levels/:id/edit" element={<LevelEditorPage />} />
+                  <Route path="levels/:id/analytics" element={<LevelAnalyticsPage />} />
+                  <Route path="classes/:name" element={<ClassAnalyticsPage />} />
                   <Route path="competitions" element={<div>Соревнования - в разработке</div>} />
-                  <Route path="statistics" element={<div>Статистика - в разработке</div>} />
+                  <Route path="statistics" element={<StatisticsPage />} />
                 </Routes>
               </TeacherLayout>
             </RoleGuard>
