@@ -6,19 +6,34 @@ export interface Class {
   created_by?: string;
   created_at: string;
   updated_at: string;
+  student_count?: number;
 }
 
 /**
- * Get all classes ordered by name
+ * Get all classes ordered by name with student count
  */
 export async function getAllClasses(): Promise<Class[]> {
-  const { data, error } = await supabase
+  // Get all classes
+  const { data: classes, error: classesError } = await supabase
     .from('classes')
     .select('*')
     .order('name', { ascending: true });
 
-  if (error) throw error;
-  return data || [];
+  if (classesError) throw classesError;
+  if (!classes) return [];
+
+  // Get student counts for each class
+  const classesWithCounts = await Promise.all(
+    classes.map(async (cls) => {
+      const count = await getClassStudentCount(cls.name);
+      return {
+        ...cls,
+        student_count: count
+      };
+    })
+  );
+
+  return classesWithCounts;
 }
 
 /**
