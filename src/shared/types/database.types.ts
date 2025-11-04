@@ -33,6 +33,7 @@ export interface Level {
   target_skills: string[];
   is_remedial: boolean;
   remedial_for?: string[];
+  allowed_classes?: string[]; // NULL or empty = available to all
   created_by?: string;
   created_at: string;
   updated_at: string;

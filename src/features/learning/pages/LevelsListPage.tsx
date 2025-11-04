@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Spinner } from '@/shared/components/ui';
 import { getLevels } from '../api/levelsApi';
+import { useAuthStore } from '@/features/auth/store/authStore';
 import type { Level } from '@/shared/types';
 
 export function LevelsListPage() {
+  const { profile } = useAuthStore();
   const [levels, setLevels] = useState<Level[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +19,8 @@ export function LevelsListPage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await getLevels();
+      // Pass student's class to filter levels
+      const data = await getLevels(profile?.class);
       setLevels(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка загрузки уровней');

@@ -195,7 +195,7 @@ export function LevelsManagePage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => navigate(`/teacher/levels/${level.id}/edit`)}
+                      onClick={() => navigate(`/teacher/levels/${level.id}`)}
                     >
                       Редактировать
                     </Button>

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getLevelById, createLevel, updateLevel, type CreateLevelData } from '@/features/learning/api/levelsApi';
+import { getAllClasses } from '@/features/teacher/api/classesApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button, Spinner } from '@/shared/components/ui';
-import type { TestCase } from '@/shared/types';
+import type { TestCase, Class } from '@/shared/types';
 
 export function LevelEditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +15,7 @@ export function LevelEditorPage() {
   const [loading, setLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [classes, setClasses] = useState<Class[]>([]);
 
   // Form state
   const [formData, setFormData] = useState<CreateLevelData>({
@@ -29,16 +31,27 @@ export function LevelEditorPage() {
     language: 'python',
     target_skills: ['basics'],
     is_remedial: false,
-    remedial_for: []
+    remedial_for: [],
+    allowed_classes: [] // Empty = available to all
   });
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    loadClasses();
     if (isEditMode && id) {
       loadLevel(id);
     }
   }, [id, isEditMode]);
+
+  async function loadClasses() {
+    try {
+      const data = await getAllClasses();
+      setClasses(data);
+    } catch (err) {
+      console.error('Failed to load classes:', err);
+    }
+  }
 
   async function loadLevel(levelId: string) {
     try {
@@ -57,7 +70,8 @@ export function LevelEditorPage() {
         language: level.language,
         target_skills: level.target_skills,
         is_remedial: level.is_remedial,
-        remedial_for: level.remedial_for || []
+        remedial_for: level.remedial_for || [],
+        allowed_classes: level.allowed_classes || []
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось загрузить уровень');
@@ -319,6 +333,42 @@ export function LevelEditorPage() {
                 className="w-full px-3 py-2 bg-admin-bg border border-admin-muted/20 rounded-lg text-admin-text focus:outline-none focus:ring-2 focus:ring-admin-accent"
                 placeholder="Например: Циклы"
               />
+            </div>
+          </div>
+
+          {/* Class Access Control */}
+          <div>
+            <label className="block text-sm font-medium text-admin-text mb-2">
+              Доступ для классов
+            </label>
+            <p className="text-xs text-admin-muted mb-3">
+              Выберите классы, которым будет доступен этот уровень. Если не выбрано ни одного - уровень доступен всем.
+            </p>
+            <div className="space-y-2 max-h-48 overflow-y-auto bg-admin-bg border border-admin-muted/20 rounded-lg p-3">
+              {classes.length === 0 ? (
+                <p className="text-sm text-admin-muted">Нет доступных классов. Создайте классы в разделе Студенты.</p>
+              ) : (
+                classes.map((cls) => (
+                  <label key={cls.name} className="flex items-center gap-2 cursor-pointer hover:bg-admin-surface p-2 rounded">
+                    <input
+                      type="checkbox"
+                      checked={formData.allowed_classes?.includes(cls.name) || false}
+                      onChange={(e) => {
+                        const currentClasses = formData.allowed_classes || [];
+                        const newClasses = e.target.checked
+                          ? [...currentClasses, cls.name]
+                          : currentClasses.filter(c => c !== cls.name);
+                        setFormData({ ...formData, allowed_classes: newClasses });
+                      }}
+                      className="w-4 h-4 text-admin-accent bg-admin-bg border-admin-muted/20 rounded focus:ring-admin-accent"
+                    />
+                    <span className="text-sm text-admin-text">{cls.name}</span>
+                    <span className="text-xs text-admin-muted ml-auto">
+                      ({cls.student_count || 0} студентов)
+                    </span>
+                  </label>
+                ))
+              )}
             </div>
           </div>
         </div>

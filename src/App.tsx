@@ -118,7 +118,7 @@ function App() {
                   <Route path="students/:id" element={<StudentDetailsPage />} />
                   <Route path="students/:id/analytics" element={<StudentAnalyticsPage />} />
                   <Route path="levels" element={<LevelsManagePage />} />
-                  <Route path="levels/:id/edit" element={<LevelEditorPage />} />
+                  <Route path="levels/:id" element={<LevelEditorPage />} />
                   <Route path="levels/:id/analytics" element={<LevelAnalyticsPage />} />
                   <Route path="classes/:name" element={<ClassAnalyticsPage />} />
                   <Route path="competitions" element={<div>Соревнования - в разработке</div>} />
