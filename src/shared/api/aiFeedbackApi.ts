@@ -1,7 +1,8 @@
+import { supabase } from '@/shared/lib/supabase';
 import type { AIFeedbackRequest, AIFeedbackResponse } from '@/shared/types';
 
 /**
- * Groq API Integration
+ * Groq API Integration via Supabase Edge Function
  * Документация: https://console.groq.com/docs
  *
  * Бесплатный tier:
@@ -15,19 +16,7 @@ import type { AIFeedbackRequest, AIFeedbackResponse } from '@/shared/types';
  * - mixtral-8x7b-32768 - хороший контекст
  */
 const USE_AI = true;
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.1-8b-instant'; // Быстрая модель для бесплатного tier
-
-/**
- * Получить Groq API ключ из переменных окружения
- */
-function getGroqApiKey(): string {
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-  if (!apiKey) {
-    throw new Error('VITE_GROQ_API_KEY не установлен в .env');
-  }
-  return apiKey;
-}
 
 /**
  * Создать промпт для анализа кода
@@ -171,22 +160,15 @@ export async function getAIFeedback(request: AIFeedbackRequest): Promise<AIFeedb
   }
 
   try {
-    const apiKey = getGroqApiKey();
     const prompt = createFeedbackPrompt(request);
 
     // Логируем для отладки
-    console.log('AI Request URL:', GROQ_API_URL);
+    console.log('Calling Edge Function ai-feedback');
     console.log('AI Request Model:', GROQ_MODEL);
-    console.log('AI Request has API key:', !!apiKey);
 
-    // Groq использует OpenAI-совместимый формат
-    const response = await fetch(GROQ_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    // Вызываем Edge Function вместо прямого запроса к Groq API
+    const { data, error } = await supabase.functions.invoke('ai-feedback', {
+      body: {
         model: GROQ_MODEL,
         messages: [
           {
@@ -197,48 +179,20 @@ export async function getAIFeedback(request: AIFeedbackRequest): Promise<AIFeedb
         temperature: 0.7,
         max_tokens: 500,
         top_p: 0.95
-      })
+      }
     });
 
     // Логируем ответ для отладки
-    console.log('AI Response status:', response.status);
-    console.log('AI Response OK:', response.ok);
+    console.log('Edge Function response:', { data, error });
 
-    if (!response.ok) {
-      // Проверить, не модель ли загружается
-      if (response.status === 503) {
-        const data = await response.json().catch(() => ({}));
-        if (data.error?.includes('loading')) {
-          return {
-            success: false,
-            feedback: 'AI модель загружается. Попробуйте через 20-30 секунд.',
-            suggestions: ['Модель Hugging Face может требовать время на загрузку при первом запуске'],
-            error: 'Model is loading'
-          };
-        }
-      }
-
-      // При ошибках 404, 401, 403 - вернуть fallback вместо throw
-      if (response.status === 404 || response.status === 401 || response.status === 403) {
-        console.warn(`Hugging Face API error: ${response.status}. Используем fallback подсказки.`);
-        return {
-          success: false,
-          feedback: 'AI сервис временно недоступен, но ты можешь попробовать сам!',
-          suggestions: [
-            'Проверь, правильно ли ты понял условие задачи',
-            'Убедись, что твой код выводит результат в нужном формате',
-            'Попробуй протестировать код с примерами из задания',
-            'Обрати внимание на ожидаемый вывод в результатах тестов'
-          ],
-          error: `API error ${response.status}`
-        };
-      }
-
-      throw new Error(`Groq API error: ${response.status} ${response.statusText}`);
+    if (error) {
+      console.error('Edge Function error:', error);
+      throw new Error(`Edge Function error: ${error.message || error}`);
     }
 
-    const data = await response.json();
-    console.log('AI Response data:', data);
+    if (!data) {
+      throw new Error('No data returned from Edge Function');
+    }
 
     // Groq использует OpenAI формат: data.choices[0].message.content
     const generatedText = data.choices?.[0]?.message?.content;
