@@ -1,5 +1,19 @@
 # Развертывание AI Feedback Edge Function
 
+⚠️ **ВАЖНО**: Функция уже создана, но ее нужно развернуть в Supabase!
+
+## Быстрый старт
+
+```bash
+# 1. Добавьте GROQ_API_KEY в Supabase Dashboard
+#    Dashboard → Settings → Edge Functions → Secrets
+
+# 2. Разверните функцию
+./scripts/deploy-ai-feedback.sh
+```
+
+---
+
 ## Проблема
 Прямые запросы к Groq API из браузера блокируются CORS политикой. Решение - использовать Supabase Edge Function как прокси.
 
@@ -26,16 +40,26 @@
 
 ### Шаг 1: Установить Groq API ключ в Supabase
 
-Перейдите в настройки проекта Supabase:
-```
-Dashboard → Project Settings → Edge Functions → Secrets
-```
-
-Добавьте секрет:
-- Ключ: `GROQ_API_KEY`
-- Значение: Ваш API ключ от https://console.groq.com
+1. Получите API ключ от Groq: https://console.groq.com/keys
+2. Перейдите в настройки проекта Supabase:
+   ```
+   Dashboard → Project Settings → Edge Functions → Secrets
+   ```
+3. Добавьте новый секрет:
+   - Name: `GROQ_API_KEY`
+   - Value: Ваш API ключ от Groq
+   - Нажмите "Add Secret"
 
 ### Шаг 2: Развернуть Edge Function
+
+**Вариант A: Использовать готовый скрипт (рекомендуется)**
+
+```bash
+# Из корневой директории проекта
+./scripts/deploy-ai-feedback.sh
+```
+
+**Вариант B: Развернуть вручную**
 
 ```bash
 # Войти в Supabase CLI
