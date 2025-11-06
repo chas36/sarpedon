@@ -39,6 +39,7 @@
 - ▶️ **Выполнение кода** — запускайте свой код и видите результаты в реальном времени
 - ✅ **Автоматическая проверка** — мгновенная валидация решений с тестовыми случаями
 - 🤖 **AI Наставник** — умные персонализированные подсказки от Llama 3.1 (Groq API, бесплатно!)
+- 🐻 **Система персонажей** — интерактивные персонажи-медведи с уникальными характерами (в разработке)
 - 📊 **Отслеживание прогресса** — следите за своими достижениями и статистикой
 - 💾 **Автосохранение** — код сохраняется автоматически, продолжайте с того же места
 - 🎨 **Monaco Editor** — профессиональный редактор кода с подсветкой синтаксиса
@@ -67,6 +68,7 @@
 - **[Tailwind CSS 3.4](https://tailwindcss.com/)** — utility-first CSS
 - **[Monaco Editor](https://microsoft.github.io/monaco-editor/)** — редактор кода (от VS Code)
 - **[Zustand](https://zustand-demo.pmnd.rs/)** — управление состоянием
+- **[Framer Motion](https://www.framer.com/motion/)** — анимации персонажей
 
 ### Backend
 
@@ -178,6 +180,79 @@ npm run dev
 
 ---
 
+## 🐻 Система персонажей (Character System)
+
+### Текущий статус
+
+Система персонажей **полностью реализована** (backend + frontend), но **временно отключена** через feature flag, пока не будет готова графика.
+
+**Что реализовано:**
+- ✅ 4 персонажа с уникальными характерами
+- ✅ Система фраз и настроений (легко расширяемая)
+- ✅ 4 типа случайных событий
+- ✅ Database schema с RLS
+- ✅ React компоненты с анимациями
+- ✅ API и хуки
+
+### Персонажи
+
+1. **🐻 Мусква** — CEO медведь
+   - Токсичный CEO, но считает себя добрым
+   - Фразы: "Дурачок!", "Хе-хе-хе!"
+   - Боится: ФНС, сов, Глаши
+
+2. **🧸 Джонни** — стажёр медведь
+   - Говорит ТОЛЬКО "Ур-ур" (медвежий язык)
+   - Обижается если назвать "Ян Гус"
+   - Любит капучино, друг Панды
+
+3. **🐼 Панда (Baobao)** — SMM/PR медведь
+   - Друг Джонни
+   - Кофейные перерывы
+
+4. **🐻‍❄️ Тапка и Потапка** — медвежата коммунисты
+   - Дети Мусквы (но отрицают это)
+   - "Мы его не знаем. Дяяяя!"
+
+### Как включить персонажей
+
+Когда графика будет готова, откройте файл:
+```
+src/features/learning/pages/SolveLevelPage.tsx
+```
+
+И измените одну строку:
+```typescript
+// Было:
+const ENABLE_CHARACTERS = false;
+
+// Станет:
+const ENABLE_CHARACTERS = true;
+```
+
+Готово! 🎉
+
+### Добавление новых фраз
+
+Чтобы добавить новые фразы персонажам, откройте:
+```
+src/features/characters/config/characterPhrases.ts
+```
+
+Добавьте новую фразу в нужный раздел:
+```typescript
+export const MUSKVA_PHRASES: Record<string, CharacterPhrase[]> = {
+  first_error: [
+    { mood: 'business', text: 'Дурачок! Хе-хе-хе!', emoji: '🐻' },
+    // Добавьте вашу фразу сюда:
+    { mood: 'evil_laugh', text: 'Новая фраза!', emoji: '😈' },
+  ],
+  // ...
+};
+```
+
+---
+
 ## 📚 Использование
 
 ### Для студентов
@@ -264,6 +339,9 @@ graph TB
 - `level_progress` — прогресс по уровням
 - `competitions` — соревнования
 - `teams` — команды для соревнований
+- `character_interactions` — взаимодействия с персонажами
+- `character_events_history` — история событий персонажей
+- `user_character_preferences` — предпочтения пользователей
 
 ---
 
@@ -332,7 +410,7 @@ npm test -- SolveLevelPage.test.tsx
 
 ## 🚦 Roadmap
 
-### Completed ✅ (70-75% реализовано)
+### Completed ✅ (75-80% реализовано)
 
 - [x] **Phase 1: MVP Authentication & UI**
   - ✅ Supabase Auth интеграция
@@ -373,17 +451,42 @@ npm test -- SolveLevelPage.test.tsx
   - ✅ Top/Struggling students identification
   - ✅ Difficulty-weighted scoring (1-10 scale)
 
+- [x] **Phase 6: Character System (Backend & Code Complete - Temporarily Disabled)**
+  - ✅ **Database Schema:**
+    - `character_interactions` таблица с RLS
+    - `character_events_history` для трекинга событий
+    - `user_character_preferences` для настроек
+  - ✅ **Character Personalities:**
+    - 🐻 **Мусква** (CEO медведь) - "Хе-хе-хе!", боится ФНС и Глаши
+    - 🧸 **Джонни** (стажёр) - говорит только "Ур-ур", любит капучино
+    - 🐼 **Панда** (SMM) - друг Джонни, кофейные перерывы
+    - 🐻‍❄️ **Тапка и Потапка** - коммунисты, дети Мусквы (но отрицают)
+  - ✅ **Extensible Configuration:**
+    - Phrase system (легко добавлять новые фразы)
+    - Mood system (настроения персонажей)
+    - Event system с cooldown tracking
+  - ✅ **React Components:**
+    - CharacterDisplay, CharacterAvatar, CharacterMessage
+    - CharacterEventOverlay для специальных событий
+    - Framer Motion анимации
+  - ✅ **API & Hooks:**
+    - Character selection logic
+    - useCharacter, useSubmissionCharacter
+    - Zustand store
+  - ✅ **Random Events:**
+    - ☕ Coffee Break (Джонни + Панда)
+    - 🚩 Union Protest (Тапка и Потапка)
+    - 🦉 FNS Scare (Мусква паникует)
+    - 👻 Glasha Mention (Мусква в ужасе)
+  - ⏸️ **Временно отключено** через feature flag `ENABLE_CHARACTERS = false`
+  - 🎨 **Ожидает графику** - SVG плейсхолдеры готовы для замены
+
 ### In Progress 🚧
 
-- [ ] **Phase 6: Character System (0%)**
-  - [ ] Мусква (CEO медведь) - персонаж и анимации
-  - [ ] Джонни (стажёр медведь) - персонаж и анимации
-  - [ ] Панда (друг Джонни)
-  - [ ] Тапка и Потапка (коммунисты медвежата)
-  - [ ] Character interaction system
-  - [ ] Random events (coffee breaks, protests)
-
-- [ ] **Phase 7: Gamification (0%)**
+- [ ] **Phase 7: Character Graphics & Gamification (0%)**
+  - [ ] Character graphics/sprites (замена SVG плейсхолдеров)
+  - [ ] Character animations refinement
+  - [ ] Enable character system (`ENABLE_CHARACTERS = true`)
   - [ ] Achievements system
   - [ ] Streaks tracking
   - [ ] Badges and unlocks
