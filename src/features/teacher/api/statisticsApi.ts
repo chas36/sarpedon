@@ -78,22 +78,23 @@ export async function getTopStudents(limit: number = 10): Promise<
 
   if (!students) return [];
 
-  // Get progress for all students
-  const { data: progress } = await supabase
-    .from('level_progress')
-    .select('student_id, status');
-
-  // Get submissions for success rate
+  // Get submissions for success rate and completed levels
   const { data: submissions } = await supabase
     .from('submissions')
-    .select('user_id, status');
+    .select('user_id, level_id, status');
 
   // Calculate stats for each student
   const studentsWithStats = students.map(student => {
-    const studentProgress = progress?.filter(p => p.student_id === student.id) || [];
-    const completedLevels = studentProgress.filter(p => p.status === 'completed').length;
-
     const studentSubmissions = submissions?.filter(s => s.user_id === student.id) || [];
+
+    // Count unique levels with passed submissions
+    const passedLevels = new Set(
+      studentSubmissions
+        .filter(s => s.status === 'passed')
+        .map(s => s.level_id)
+    );
+    const completedLevels = passedLevels.size;
+
     const successRate = calculateSuccessRate(
       studentSubmissions.filter(s => s.status === 'passed').length,
       studentSubmissions.length
@@ -138,23 +139,24 @@ export async function getStrugglingStudents(): Promise<
 
   if (!students) return [];
 
-  // 2. Get progress for all students
-  const { data: progress } = await supabase
-    .from('level_progress')
-    .select('student_id, status');
-
-  // 3. Get submissions for success rate and last activity
+  // 2. Get submissions for success rate, completed levels and last activity
   const { data: submissions } = await supabase
     .from('submissions')
-    .select('user_id, status, submitted_at')
+    .select('user_id, level_id, status, submitted_at')
     .order('submitted_at', { ascending: false });
 
-  // 4. Calculate stats and identify struggling students
+  // 3. Calculate stats and identify struggling students
   const studentsWithStats = students.map(student => {
-    const studentProgress = progress?.filter(p => p.student_id === student.id) || [];
-    const completedLevels = studentProgress.filter(p => p.status === 'completed').length;
-
     const studentSubmissions = submissions?.filter(s => s.user_id === student.id) || [];
+
+    // Count unique levels with passed submissions
+    const passedLevels = new Set(
+      studentSubmissions
+        .filter(s => s.status === 'passed')
+        .map(s => s.level_id)
+    );
+    const completedLevels = passedLevels.size;
+
     const successRate = calculateSuccessRate(
       studentSubmissions.filter(s => s.status === 'passed').length,
       studentSubmissions.length
@@ -266,15 +268,22 @@ export async function getStudentsDistribution(): Promise<{
     .from('levels')
     .select('*', { count: 'exact', head: true });
 
-  // Get progress for all students
-  const { data: progress } = await supabase
-    .from('level_progress')
-    .select('student_id, status');
+  // Get submissions for all students
+  const { data: submissions } = await supabase
+    .from('submissions')
+    .select('user_id, level_id, status');
 
   // Calculate completed levels for each student
   const studentsWithProgress = students.map(student => {
-    const studentProgress = progress?.filter(p => p.student_id === student.id) || [];
-    const completedLevels = studentProgress.filter(p => p.status === 'completed').length;
+    const studentSubmissions = submissions?.filter(s => s.user_id === student.id) || [];
+
+    // Count unique levels with passed submissions
+    const passedLevels = new Set(
+      studentSubmissions
+        .filter(s => s.status === 'passed')
+        .map(s => s.level_id)
+    );
+    const completedLevels = passedLevels.size;
 
     return {
       completedLevels,
@@ -694,24 +703,24 @@ export async function getClassStatistics(className: string): Promise<{
     .from('levels')
     .select('*', { count: 'exact', head: true });
 
-  // Get progress for students in this class
-  const { data: progress } = await supabase
-    .from('level_progress')
-    .select('student_id, status')
-    .in('student_id', students.map(s => s.id));
-
   // Get submissions for students in this class
   const { data: submissions } = await supabase
     .from('submissions')
-    .select('user_id, status, submitted_at')
+    .select('user_id, level_id, status, submitted_at')
     .in('user_id', students.map(s => s.id));
 
   // Calculate stats for each student
   const studentsWithStats = students.map(student => {
-    const studentProgress = progress?.filter(p => p.student_id === student.id) || [];
-    const completedLevels = studentProgress.filter(p => p.status === 'completed').length;
-
     const studentSubmissions = submissions?.filter(s => s.user_id === student.id) || [];
+
+    // Count unique levels with passed submissions
+    const passedLevels = new Set(
+      studentSubmissions
+        .filter(s => s.status === 'passed')
+        .map(s => s.level_id)
+    );
+    const completedLevels = passedLevels.size;
+
     const successRate = calculateSuccessRate(
       studentSubmissions.filter(s => s.status === 'passed').length,
       studentSubmissions.length
