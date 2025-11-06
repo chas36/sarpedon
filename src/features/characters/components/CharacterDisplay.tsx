@@ -4,7 +4,7 @@
  * Main component for displaying characters with messages
  */
 
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CharacterName, MoodType } from '../types/character.types';
 import { CharacterAvatar } from './CharacterAvatar';
@@ -21,7 +21,7 @@ interface CharacterDisplayProps {
   autoHideDuration?: number;
 }
 
-export const CharacterDisplay: React.FC<CharacterDisplayProps> = ({
+export function CharacterDisplay({
   character,
   mood,
   message,
@@ -117,13 +117,13 @@ interface CharacterNotificationProps {
   onDismiss?: () => void;
 }
 
-export const CharacterNotification: React.FC<CharacterNotificationProps> = ({
+export function CharacterNotification({
   character,
   mood,
   message,
   emoji,
   onDismiss,
-}) => {
+}: CharacterNotificationProps) {
   return (
     <motion.div
       initial={{ x: 100, opacity: 0 }}
@@ -159,4 +159,4 @@ export const CharacterNotification: React.FC<CharacterNotificationProps> = ({
       )}
     </motion.div>
   );
-};
+}

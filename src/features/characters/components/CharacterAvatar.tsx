@@ -16,12 +16,12 @@ interface CharacterAvatarProps {
   animate?: boolean;
 }
 
-export const CharacterAvatar: React.FC<CharacterAvatarProps> = ({
+export function CharacterAvatar({
   character,
   mood,
   size = 'medium',
   animate = true,
-}) => {
+}: CharacterAvatarProps) {
   const colors = getCharacterColors(character);
 
   const sizeClasses = {
@@ -107,7 +107,7 @@ export const CharacterAvatar: React.FC<CharacterAvatarProps> = ({
       {character === 'tapka_potapka' && <TapkaPotapkaAvatar mood={mood} colors={colors} />}
     </motion.div>
   );
-};
+}
 
 // =====================================================
 // Individual Character Avatars (Placeholder SVGs)
@@ -119,7 +119,7 @@ interface AvatarProps {
 }
 
 // 🐻 Muskva Avatar
-const MuskvaAvatar: React.FC<AvatarProps> = ({ mood, colors }) => {
+function MuskvaAvatar({ mood, colors }: AvatarProps) {
   // Different expressions based on mood
   const getExpression = () => {
     switch (mood) {
@@ -198,10 +198,10 @@ const MuskvaAvatar: React.FC<AvatarProps> = ({ mood, colors }) => {
       )}
     </svg>
   );
-};
+}
 
 // 🧸 Johnny Avatar
-const JohnnyAvatar: React.FC<AvatarProps> = ({ mood, colors }) => {
+function JohnnyAvatar({ mood, colors }: AvatarProps) {
   const getExpression = () => {
     switch (mood) {
       case 'happy':
@@ -251,10 +251,10 @@ const JohnnyAvatar: React.FC<AvatarProps> = ({ mood, colors }) => {
       )}
     </svg>
   );
-};
+}
 
 // 🐼 Panda Avatar
-const PandaAvatar: React.FC<AvatarProps> = ({ mood, colors }) => {
+function PandaAvatar({ mood, colors }: AvatarProps) {
   return (
     <svg viewBox="0 0 120 120" className="w-full h-full">
       {/* Panda face (white) */}
@@ -293,10 +293,10 @@ const PandaAvatar: React.FC<AvatarProps> = ({ mood, colors }) => {
       )}
     </svg>
   );
-};
+}
 
 // 🐻‍❄️ Tapka & Potapka Avatar (two bears)
-const TapkaPotapkaAvatar: React.FC<AvatarProps> = ({ mood, colors }) => {
+function TapkaPotapkaAvatar({ mood, colors }: AvatarProps) {
   return (
     <svg viewBox="0 0 120 120" className="w-full h-full">
       {/* Left bear (Tapka) */}
@@ -335,4 +335,4 @@ const TapkaPotapkaAvatar: React.FC<AvatarProps> = ({ mood, colors }) => {
       )}
     </svg>
   );
-};
+}

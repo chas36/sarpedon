@@ -4,7 +4,7 @@
  * Special full-screen overlays for character events
  */
 
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CharacterEvent, CharacterEventType } from '../types/character.types';
 import { CharacterAvatar } from './CharacterAvatar';
@@ -14,10 +14,10 @@ interface CharacterEventOverlayProps {
   onComplete?: () => void;
 }
 
-export const CharacterEventOverlay: React.FC<CharacterEventOverlayProps> = ({
+export function CharacterEventOverlay({
   event,
   onComplete,
-}) => {
+}: CharacterEventOverlayProps) {
   // Auto-complete after duration
   useEffect(() => {
     if (onComplete) {
@@ -54,7 +54,7 @@ export const CharacterEventOverlay: React.FC<CharacterEventOverlayProps> = ({
       </motion.div>
     </AnimatePresence>
   );
-};
+}
 
 // =====================================================
 // Individual Event Components
@@ -65,7 +65,7 @@ interface EventProps {
 }
 
 // ☕ Coffee Break Event
-const CoffeeBreakEvent: React.FC<EventProps> = ({ event }) => {
+function CoffeeBreakEvent({ event }: EventProps) {
   return (
     <motion.div
       initial={{ scale: 0.8, opacity: 0 }}
@@ -133,10 +133,10 @@ const CoffeeBreakEvent: React.FC<EventProps> = ({ event }) => {
       </motion.p>
     </motion.div>
   );
-};
+}
 
 // 🚩 Union Protest Event
-const UnionProtestEvent: React.FC<EventProps> = ({ event }) => {
+function UnionProtestEvent({ event }: EventProps) {
   return (
     <motion.div
       initial={{ x: -500, opacity: 0 }}
@@ -233,10 +233,10 @@ const UnionProtestEvent: React.FC<EventProps> = ({ event }) => {
       )}
     </motion.div>
   );
-};
+}
 
 // 🦉 FNS Scare Event
-const FnsScareEvent: React.FC<EventProps> = ({ event }) => {
+function FnsScareEvent({ event }: EventProps) {
   return (
     <motion.div
       initial={{ scale: 1.5, opacity: 0 }}
@@ -307,10 +307,10 @@ const FnsScareEvent: React.FC<EventProps> = ({ event }) => {
       />
     </motion.div>
   );
-};
+}
 
 // 👻 Glasha Mention Event
-const GlashaMentionEvent: React.FC<EventProps> = ({ event }) => {
+function GlashaMentionEvent({ event }: EventProps) {
   return (
     <motion.div
       initial={{ scale: 0, opacity: 0 }}
@@ -377,4 +377,4 @@ const GlashaMentionEvent: React.FC<EventProps> = ({ event }) => {
       </p>
     </motion.div>
   );
-};
+}

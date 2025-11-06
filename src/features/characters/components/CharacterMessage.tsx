@@ -15,12 +15,12 @@ interface CharacterMessageProps {
   emoji?: string;
 }
 
-export const CharacterMessage: React.FC<CharacterMessageProps> = ({
+export function CharacterMessage({
   character,
   mood,
   message,
   emoji,
-}) => {
+}: CharacterMessageProps) {
   const colors = getCharacterColors(character);
 
   // Message style based on character
@@ -120,4 +120,4 @@ export const CharacterMessage: React.FC<CharacterMessageProps> = ({
       )}
     </motion.div>
   );
-};
+}
