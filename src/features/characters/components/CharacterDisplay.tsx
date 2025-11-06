@@ -29,7 +29,7 @@ export function CharacterDisplay({
   onComplete,
   autoHide = false,
   autoHideDuration = 5000,
-}) => {
+}: CharacterDisplayProps) {
   // Auto-hide after duration
   useEffect(() => {
     if (autoHide && onComplete) {
