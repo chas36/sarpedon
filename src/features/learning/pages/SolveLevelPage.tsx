@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { Spinner, CodeEditor } from '@/shared/components/ui';
+import { Spinner, CodeEditor, Modal } from '@/shared/components/ui';
 import { getLevelById, getNextLevel } from '../api/levelsApi';
 import { createSubmission, getLatestSubmission, getSubmissionHistory } from '../api/submissionsApi';
 import type { Submission } from '@/shared/types';
@@ -8,6 +8,9 @@ import { executeCode, runTests } from '@/shared/api/codeExecutionApi';
 import { getAIFeedback } from '@/shared/api/aiFeedbackApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import type { Level, ExecutionResponse, AIFeedbackResponse } from '@/shared/types';
+import { useSubmissionCharacter } from '@/features/characters';
+import { CharacterDisplay, CharacterEventOverlay } from '@/features/characters/components';
+import type { CharacterResponse } from '@/features/characters';
 
 export function SolveLevelPage() {
   const { levelId } = useParams<{ levelId: string }>();
@@ -26,6 +29,16 @@ export function SolveLevelPage() {
   const [loadingAI, setLoadingAI] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<Submission[]>([]);
+
+  // Character system state
+  const [showCharacter, setShowCharacter] = useState(false);
+  const [characterResponse, setCharacterResponse] = useState<CharacterResponse | null>(null);
+  const [attemptNumber, setAttemptNumber] = useState(1);
+  const [consecutiveErrors, setConsecutiveErrors] = useState(0);
+  const [totalCompleted, setTotalCompleted] = useState(0);
+
+  // Character hook
+  const { showFeedbackCharacter } = useSubmissionCharacter(user?.id || '');
 
   // Reset state when levelId changes
   useEffect(() => {
@@ -175,8 +188,9 @@ export function SolveLevelPage() {
         }
 
         // Сохраняем submission с метриками качества
+        let submissionId: string | undefined;
         if (levelId && user) {
-          await createSubmission({
+          const submission = await createSubmission({
             user_id: user.id,
             level_id: levelId,
             code: code.trim(),
@@ -184,6 +198,39 @@ export function SolveLevelPage() {
             quality_metrics: aiResponse?.quality_metrics,
             ai_feedback: aiResponse?.feedback
           });
+          submissionId = submission?.id;
+
+          // ===== CHARACTER SYSTEM: Show character with feedback =====
+          try {
+            const qualityScore = aiResponse?.quality_metrics?.overall_score || 0;
+            const characterResp = await showFeedbackCharacter(
+              result.allTestsPassed,
+              qualityScore,
+              attemptNumber,
+              submissionId || '',
+              {
+                consecutiveErrors,
+                totalCompleted,
+                levelDifficulty: level.difficulty,
+              }
+            );
+
+            setCharacterResponse(characterResp);
+            setShowCharacter(true);
+
+            // Update attempt tracking
+            if (result.allTestsPassed) {
+              setAttemptNumber(1); // Reset for next level
+              setConsecutiveErrors(0);
+              setTotalCompleted(prev => prev + 1);
+            } else {
+              setAttemptNumber(prev => prev + 1);
+              setConsecutiveErrors(prev => prev + 1);
+            }
+          } catch (err) {
+            console.error('Failed to show character:', err);
+            // Continue without character on error
+          }
         }
       } else {
         const result = await executeCode({
@@ -732,6 +779,32 @@ export function SolveLevelPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* ===== CHARACTER MODAL ===== */}
+      {showCharacter && characterResponse && (
+        <Modal
+          isOpen={showCharacter}
+          onClose={() => setShowCharacter(false)}
+          size="large"
+        >
+          {/* Show event overlay if there's an event */}
+          {characterResponse.event ? (
+            <CharacterEventOverlay
+              event={characterResponse.event}
+              onComplete={() => setShowCharacter(false)}
+            />
+          ) : (
+            /* Show regular character feedback */
+            <CharacterDisplay
+              character={characterResponse.characters[0]}
+              mood={characterResponse.mood}
+              message={characterResponse.message}
+              emoji={characterResponse.emoji}
+              onComplete={() => setShowCharacter(false)}
+            />
+          )}
+        </Modal>
       )}
     </div>
   );
