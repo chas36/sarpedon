@@ -5,6 +5,7 @@ import { getAllClasses } from '@/features/teacher/api/classesApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button, Spinner } from '@/shared/components/ui';
 import type { TestCase, Class } from '@/shared/types';
+import { getDifficultyLabel, getDifficultyColor } from '../utils/difficultyUtils';
 
 export function LevelEditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,7 +26,7 @@ export function LevelEditorPage() {
     reference_solution: '',
     test_cases: [{ input: '', output: '', description: '' }],
     hints: [''],
-    difficulty: 'easy',
+    difficulty: 5, // Default to medium difficulty on 1-10 scale
     order_index: 1,
     topic: '',
     language: 'python',
@@ -291,17 +292,37 @@ export function LevelEditorPage() {
 
             <div>
               <label className="block text-sm font-medium text-admin-text mb-1">
-                Сложность *
+                Сложность * (1-10)
               </label>
-              <select
-                value={formData.difficulty}
-                onChange={(e) => setFormData({ ...formData, difficulty: e.target.value as any })}
-                className="w-full px-3 py-2 bg-admin-bg border border-admin-muted/20 rounded-lg text-admin-text focus:outline-none focus:ring-2 focus:ring-admin-accent"
-              >
-                <option value="easy">Легкий</option>
-                <option value="medium">Средний</option>
-                <option value="hard">Сложный</option>
-              </select>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    value={formData.difficulty}
+                    onChange={(e) => setFormData({ ...formData, difficulty: parseInt(e.target.value) })}
+                    className="flex-1 h-2 bg-admin-bg rounded-lg appearance-none cursor-pointer slider"
+                  />
+                  <div className="flex items-center gap-2 min-w-[140px]">
+                    <span className="text-2xl font-bold text-admin-text w-8 text-center">{formData.difficulty}</span>
+                    <span
+                      className="text-xs font-medium px-2 py-1 rounded whitespace-nowrap"
+                      style={{
+                        backgroundColor: `${getDifficultyColor(formData.difficulty)}20`,
+                        color: getDifficultyColor(formData.difficulty)
+                      }}
+                    >
+                      {getDifficultyLabel(formData.difficulty)}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex justify-between text-xs text-admin-muted px-1">
+                  <span>1 - Легкий</span>
+                  <span>5 - Средний</span>
+                  <span>10 - Очень сложный</span>
+                </div>
+              </div>
             </div>
           </div>
 

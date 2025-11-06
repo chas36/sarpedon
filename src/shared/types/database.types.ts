@@ -1,6 +1,6 @@
 export type Role = 'teacher' | 'student' | 'editor';
 
-export type Difficulty = 'easy' | 'medium' | 'hard';
+export type Difficulty = number; // 1-10 scale, where 1 is easiest and 10 is hardest
 
 export type LevelStatus = 'not_started' | 'in_progress' | 'completed';
 

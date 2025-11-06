@@ -9,11 +9,29 @@ import {
   calculateAverageTime,
 } from '../utils/statsCalculations';
 import { fillMissingDays } from '../utils/dateUtils';
+import { getDifficultyWeight } from '../utils/difficultyUtils';
 
 /**
- * Get overall statistics for all students
+ * Get all unique class names from student profiles
  */
-export async function getOverallStatistics(): Promise<{
+export async function getAllClasses(): Promise<string[]> {
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('class')
+    .eq('role', 'student')
+    .not('class', 'is', null);
+
+  if (!profiles) return [];
+
+  // Get unique classes and sort them
+  const uniqueClasses = [...new Set(profiles.map(p => p.class).filter(Boolean))];
+  return uniqueClasses.sort();
+}
+
+/**
+ * Get overall statistics for all students or specific class
+ */
+export async function getOverallStatistics(className?: string): Promise<{
   totalStudents: number;
   totalLevels: number;
   totalSubmissions: number;
@@ -21,20 +39,43 @@ export async function getOverallStatistics(): Promise<{
   activeStudentsLast7Days: number;
 }> {
   // Get total students count
-  const { count: totalStudents } = await supabase
+  let studentsQuery = supabase
     .from('profiles')
     .select('*', { count: 'exact', head: true })
     .eq('role', 'student');
+
+  if (className) {
+    studentsQuery = studentsQuery.eq('class', className);
+  }
+
+  const { count: totalStudents } = await studentsQuery;
 
   // Get total levels count
   const { count: totalLevels } = await supabase
     .from('levels')
     .select('*', { count: 'exact', head: true });
 
-  // Get all submissions
-  const { data: submissions } = await supabase
+  // Get student IDs for filtering submissions
+  let studentIds: string[] | undefined;
+  if (className) {
+    const { data: students } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'student')
+      .eq('class', className);
+    studentIds = students?.map(s => s.id);
+  }
+
+  // Get all submissions (filtered by class if specified)
+  let submissionsQuery = supabase
     .from('submissions')
     .select('status, user_id, submitted_at');
+
+  if (studentIds) {
+    submissionsQuery = submissionsQuery.in('user_id', studentIds);
+  }
+
+  const { data: submissions } = await submissionsQuery;
 
   const totalSubmissions = submissions?.length || 0;
   const successfulSubmissions = submissions?.filter(s => s.status === 'passed').length || 0;
@@ -62,7 +103,7 @@ export async function getOverallStatistics(): Promise<{
 /**
  * Get top students by completed levels
  */
-export async function getTopStudents(limit: number = 10): Promise<
+export async function getTopStudents(limit: number = 10, className?: string): Promise<
   Array<{
     student: Profile;
     completedLevels: number;
@@ -70,30 +111,37 @@ export async function getTopStudents(limit: number = 10): Promise<
     rank: number;
   }>
 > {
-  // Get all students
-  const { data: students } = await supabase
+  // Get all students (filtered by class if specified)
+  let studentsQuery = supabase
     .from('profiles')
     .select('*')
     .eq('role', 'student');
 
+  if (className) {
+    studentsQuery = studentsQuery.eq('class', className);
+  }
+
+  const { data: students } = await studentsQuery;
+
   if (!students) return [];
 
-  // Get progress for all students
-  const { data: progress } = await supabase
-    .from('level_progress')
-    .select('student_id, status');
-
-  // Get submissions for success rate
+  // Get submissions for success rate and completed levels
   const { data: submissions } = await supabase
     .from('submissions')
-    .select('user_id, status');
+    .select('user_id, level_id, status');
 
   // Calculate stats for each student
   const studentsWithStats = students.map(student => {
-    const studentProgress = progress?.filter(p => p.student_id === student.id) || [];
-    const completedLevels = studentProgress.filter(p => p.status === 'completed').length;
-
     const studentSubmissions = submissions?.filter(s => s.user_id === student.id) || [];
+
+    // Count unique levels with passed submissions
+    const passedLevels = new Set(
+      studentSubmissions
+        .filter(s => s.status === 'passed')
+        .map(s => s.level_id)
+    );
+    const completedLevels = passedLevels.size;
+
     const successRate = calculateSuccessRate(
       studentSubmissions.filter(s => s.status === 'passed').length,
       studentSubmissions.length
@@ -121,7 +169,7 @@ export async function getTopStudents(limit: number = 10): Promise<
 /**
  * Get struggling students who need attention
  */
-export async function getStrugglingStudents(): Promise<
+export async function getStrugglingStudents(className?: string): Promise<
   Array<{
     student: Profile;
     completedLevels: number;
@@ -130,31 +178,38 @@ export async function getStrugglingStudents(): Promise<
     issue: 'low_success' | 'low_activity' | 'inactive';
   }>
 > {
-  // 1. Get all students
-  const { data: students } = await supabase
+  // 1. Get all students (filtered by class if specified)
+  let studentsQuery = supabase
     .from('profiles')
     .select('*')
     .eq('role', 'student');
 
+  if (className) {
+    studentsQuery = studentsQuery.eq('class', className);
+  }
+
+  const { data: students } = await studentsQuery;
+
   if (!students) return [];
 
-  // 2. Get progress for all students
-  const { data: progress } = await supabase
-    .from('level_progress')
-    .select('student_id, status');
-
-  // 3. Get submissions for success rate and last activity
+  // 2. Get submissions for success rate, completed levels and last activity
   const { data: submissions } = await supabase
     .from('submissions')
-    .select('user_id, status, submitted_at')
+    .select('user_id, level_id, status, submitted_at')
     .order('submitted_at', { ascending: false });
 
-  // 4. Calculate stats and identify struggling students
+  // 3. Calculate stats and identify struggling students
   const studentsWithStats = students.map(student => {
-    const studentProgress = progress?.filter(p => p.student_id === student.id) || [];
-    const completedLevels = studentProgress.filter(p => p.status === 'completed').length;
-
     const studentSubmissions = submissions?.filter(s => s.user_id === student.id) || [];
+
+    // Count unique levels with passed submissions
+    const passedLevels = new Set(
+      studentSubmissions
+        .filter(s => s.status === 'passed')
+        .map(s => s.level_id)
+    );
+    const completedLevels = passedLevels.size;
+
     const successRate = calculateSuccessRate(
       studentSubmissions.filter(s => s.status === 'passed').length,
       studentSubmissions.length
@@ -195,38 +250,47 @@ export async function getStrugglingStudents(): Promise<
 }
 
 /**
- * Get recent activity across the platform
+ * Get recent activity across the platform or specific class
  */
-export async function getRecentActivity(limit: number = 20): Promise<
-  Array<{
-    submission: Submission;
-    student: Profile;
-    level: Level;
-  }>
+export async function getRecentActivity(limit: number = 20, className?: string): Promise<
+  Array<Submission & { student: Profile; level: Level }>
 > {
-  const { data: submissions } = await supabase
+  let submissionsQuery = supabase
     .from('submissions')
     .select(`
       *,
-      profiles(*),
-      levels(*)
+      student:profiles!user_id(*),
+      level:levels(*)
     `)
     .order('submitted_at', { ascending: false })
     .limit(limit);
 
+  // Filter by class if specified
+  if (className) {
+    // We need to filter by student's class through the join
+    const { data: students } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'student')
+      .eq('class', className);
+
+    const studentIds = students?.map(s => s.id) || [];
+    if (studentIds.length === 0) return [];
+
+    submissionsQuery = submissionsQuery.in('user_id', studentIds);
+  }
+
+  const { data: submissions } = await submissionsQuery;
+
   if (!submissions) return [];
 
-  return submissions.map(s => ({
-    submission: s,
-    student: s.profiles,
-    level: s.levels,
-  }));
+  return submissions;
 }
 
 /**
- * Get progress over time for all students
+ * Get progress over time for all students or specific class
  */
-export async function getProgressOverTime(days: number = 30): Promise<
+export async function getProgressOverTime(days: number = 30, className?: string): Promise<
   Array<{
     date: string;
     count: number;
@@ -235,11 +299,28 @@ export async function getProgressOverTime(days: number = 30): Promise<
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
 
-  const { data: progress } = await supabase
+  // Get student IDs for filtering if class is specified
+  let studentIds: string[] | undefined;
+  if (className) {
+    const { data: students } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'student')
+      .eq('class', className);
+    studentIds = students?.map(s => s.id);
+  }
+
+  let progressQuery = supabase
     .from('level_progress')
     .select('completed_at, status')
     .eq('status', 'completed')
     .gte('completed_at', startDate.toISOString());
+
+  if (studentIds) {
+    progressQuery = progressQuery.in('student_id', studentIds);
+  }
+
+  const { data: progress } = await progressQuery;
 
   if (!progress) return [];
 
@@ -255,17 +336,23 @@ export async function getProgressOverTime(days: number = 30): Promise<
 /**
  * Get distribution of students by progress percentage
  */
-export async function getStudentsDistribution(): Promise<{
+export async function getStudentsDistribution(className?: string): Promise<{
   '0-25': number;
   '25-50': number;
   '50-75': number;
   '75-100': number;
 }> {
-  // Get all students
-  const { data: students } = await supabase
+  // Get all students (filtered by class if specified)
+  let studentsQuery = supabase
     .from('profiles')
     .select('id')
     .eq('role', 'student');
+
+  if (className) {
+    studentsQuery = studentsQuery.eq('class', className);
+  }
+
+  const { data: students } = await studentsQuery;
 
   if (!students) return { '0-25': 0, '25-50': 0, '50-75': 0, '75-100': 0 };
 
@@ -274,15 +361,22 @@ export async function getStudentsDistribution(): Promise<{
     .from('levels')
     .select('*', { count: 'exact', head: true });
 
-  // Get progress for all students
-  const { data: progress } = await supabase
-    .from('level_progress')
-    .select('student_id, status');
+  // Get submissions for all students
+  const { data: submissions } = await supabase
+    .from('submissions')
+    .select('user_id, level_id, status');
 
   // Calculate completed levels for each student
   const studentsWithProgress = students.map(student => {
-    const studentProgress = progress?.filter(p => p.student_id === student.id) || [];
-    const completedLevels = studentProgress.filter(p => p.status === 'completed').length;
+    const studentSubmissions = submissions?.filter(s => s.user_id === student.id) || [];
+
+    // Count unique levels with passed submissions
+    const passedLevels = new Set(
+      studentSubmissions
+        .filter(s => s.status === 'passed')
+        .map(s => s.level_id)
+    );
+    const completedLevels = passedLevels.size;
 
     return {
       completedLevels,
@@ -297,7 +391,7 @@ export async function getStudentsDistribution(): Promise<{
 /**
  * Get aggregated activity for heatmap
  */
-export async function getAggregatedActivity(days: number = 60): Promise<
+export async function getAggregatedActivity(days: number = 60, className?: string): Promise<
   Array<{
     date: string;
     activityCount: number;
@@ -306,10 +400,27 @@ export async function getAggregatedActivity(days: number = 60): Promise<
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
 
-  const { data: submissions } = await supabase
+  // Get student IDs for filtering if class is specified
+  let studentIds: string[] | undefined;
+  if (className) {
+    const { data: students } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'student')
+      .eq('class', className);
+    studentIds = students?.map(s => s.id);
+  }
+
+  let submissionsQuery = supabase
     .from('submissions')
     .select('submitted_at')
     .gte('submitted_at', startDate.toISOString());
+
+  if (studentIds) {
+    submissionsQuery = submissionsQuery.in('user_id', studentIds);
+  }
+
+  const { data: submissions } = await submissionsQuery;
 
   if (!submissions) return [];
 
@@ -335,17 +446,14 @@ export async function getStudentSubmissions(
     .from('submissions')
     .select(`
       *,
-      levels(*)
+      level:levels(*)
     `)
     .eq('user_id', studentId)
     .order('submitted_at', { ascending: false });
 
   if (!submissions) return [];
 
-  return submissions.map(s => ({
-    ...s,
-    level: s.levels,
-  }));
+  return submissions;
 }
 
 /**
@@ -389,10 +497,7 @@ export async function getStudentLevelProgress(
     const levelSubmissions = submissions?.filter(s => s.level_id === level.id) || [];
 
     const attempts = levelSubmissions.length;
-    const timeSpent = levelSubmissions.reduce(
-      (sum, s) => sum + (s.execution_time_ms || 0),
-      0
-    );
+    const timeSpent = 0; // execution_time_ms not available in submissions table
     const lastSubmission = levelSubmissions[0] || null;
     const isCorrect = levelSubmissions.some(s => s.status === 'passed');
 
@@ -441,6 +546,7 @@ export async function getStudentActivity(
 
 /**
  * Get time metrics for student
+ * Note: execution_time_ms is not available in submissions table
  */
 export async function getStudentTimeMetrics(
   studentId: string
@@ -449,30 +555,12 @@ export async function getStudentTimeMetrics(
   fastestSolveTime: number;
   slowestSolveTime: number;
 }> {
-  const { data: submissions } = await supabase
-    .from('submissions')
-    .select('execution_time_ms')
-    .eq('user_id', studentId)
-    .eq('status', 'passed')
-    .not('execution_time_ms', 'is', null);
-
-  if (!submissions || submissions.length === 0) {
-    return {
-      averageSolveTime: 0,
-      fastestSolveTime: 0,
-      slowestSolveTime: 0,
-    };
-  }
-
-  const times = submissions.map(s => s.execution_time_ms!);
-  const averageSolveTime = calculateAverageTime(submissions);
-  const fastestSolveTime = Math.min(...times);
-  const slowestSolveTime = Math.max(...times);
-
+  // execution_time_ms not available in submissions table
+  // Return placeholder values
   return {
-    averageSolveTime,
-    fastestSolveTime,
-    slowestSolveTime,
+    averageSolveTime: 0,
+    fastestSolveTime: 0,
+    slowestSolveTime: 0,
   };
 }
 
@@ -571,7 +659,7 @@ export async function getLevelStatistics(levelId: string): Promise<{
     .from('submissions')
     .select(`
       *,
-      profiles(*)
+      student:profiles!user_id(*)
     `)
     .eq('level_id', levelId)
     .order('submitted_at', { ascending: false });
@@ -607,7 +695,7 @@ export async function getLevelStatistics(levelId: string): Promise<{
   submissions.forEach(s => {
     if (!studentMap.has(s.user_id)) {
       studentMap.set(s.user_id, {
-        student: s.profiles,
+        student: s.student,
         attempts: 0,
         isCorrect: false,
         lastSubmittedAt: s.submitted_at,
@@ -666,7 +754,7 @@ export async function getLevelRecentSubmissions(
     .from('submissions')
     .select(`
       *,
-      profiles(*)
+      student:profiles!user_id(*)
     `)
     .eq('level_id', levelId)
     .order('submitted_at', { ascending: false })
@@ -674,10 +762,7 @@ export async function getLevelRecentSubmissions(
 
   if (!submissions) return [];
 
-  return submissions.map(s => ({
-    ...s,
-    student: s.profiles,
-  }));
+  return submissions;
 }
 
 /**
@@ -728,24 +813,24 @@ export async function getClassStatistics(className: string): Promise<{
     .from('levels')
     .select('*', { count: 'exact', head: true });
 
-  // Get progress for students in this class
-  const { data: progress } = await supabase
-    .from('level_progress')
-    .select('user_id, status')
-    .in('user_id', students.map(s => s.id));
-
   // Get submissions for students in this class
   const { data: submissions } = await supabase
     .from('submissions')
-    .select('user_id, status, submitted_at')
+    .select('user_id, level_id, status, submitted_at')
     .in('user_id', students.map(s => s.id));
 
   // Calculate stats for each student
   const studentsWithStats = students.map(student => {
-    const studentProgress = progress?.filter(p => p.student_id === student.id) || [];
-    const completedLevels = studentProgress.filter(p => p.status === 'completed').length;
-
     const studentSubmissions = submissions?.filter(s => s.user_id === student.id) || [];
+
+    // Count unique levels with passed submissions
+    const passedLevels = new Set(
+      studentSubmissions
+        .filter(s => s.status === 'passed')
+        .map(s => s.level_id)
+    );
+    const completedLevels = passedLevels.size;
+
     const successRate = calculateSuccessRate(
       studentSubmissions.filter(s => s.status === 'passed').length,
       studentSubmissions.length
@@ -888,4 +973,169 @@ export async function getClassActivity(
     date: d.date,
     activityCount: d.count,
   }));
+}
+
+/**
+ * Get difficulty-weighted statistics for students
+ */
+export async function getDifficultyWeightedStats(className?: string): Promise<{
+  averageDifficulty: number;
+  difficultyDistribution: {
+    easy: number;      // 1-3
+    medium: number;    // 4-5
+    hard: number;      // 6-7
+    veryHard: number;  // 8-10
+  };
+}> {
+  // Get student IDs for filtering if class is specified
+  let studentIds: string[] | undefined;
+  if (className) {
+    const { data: students } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'student')
+      .eq('class', className);
+    studentIds = students?.map(s => s.id);
+  }
+
+  // Get all passed submissions with level difficulty
+  let submissionsQuery = supabase
+    .from('submissions')
+    .select(`
+      level_id,
+      status,
+      level:levels(difficulty)
+    `)
+    .eq('status', 'passed');
+
+  if (studentIds) {
+    submissionsQuery = submissionsQuery.in('user_id', studentIds);
+  }
+
+  const { data: submissions } = await submissionsQuery;
+
+  if (!submissions || submissions.length === 0) {
+    return {
+      averageDifficulty: 0,
+      difficultyDistribution: {
+        easy: 0,
+        medium: 0,
+        hard: 0,
+        veryHard: 0,
+      },
+    };
+  }
+
+  // Calculate average difficulty of completed levels
+  const difficulties = submissions
+    .map(s => s.level?.difficulty)
+    .filter((d): d is number => typeof d === 'number');
+
+  const averageDifficulty = difficulties.length > 0
+    ? Math.round((difficulties.reduce((sum, d) => sum + d, 0) / difficulties.length) * 10) / 10
+    : 0;
+
+  // Calculate distribution
+  const distribution = {
+    easy: difficulties.filter(d => d <= 3).length,
+    medium: difficulties.filter(d => d >= 4 && d <= 5).length,
+    hard: difficulties.filter(d => d >= 6 && d <= 7).length,
+    veryHard: difficulties.filter(d => d >= 8).length,
+  };
+
+  return {
+    averageDifficulty,
+    difficultyDistribution: distribution,
+  };
+}
+
+/**
+ * Get top students with difficulty-weighted scoring
+ */
+export async function getTopStudentsWeighted(
+  limit: number = 10,
+  className?: string
+): Promise<
+  Array<{
+    student: Profile;
+    completedLevels: number;
+    successRate: number;
+    weightedScore: number;
+    averageDifficulty: number;
+    rank: number;
+  }>
+> {
+  // Get all students (filtered by class if specified)
+  let studentsQuery = supabase
+    .from('profiles')
+    .select('*')
+    .eq('role', 'student');
+
+  if (className) {
+    studentsQuery = studentsQuery.eq('class', className);
+  }
+
+  const { data: students } = await studentsQuery;
+
+  if (!students) return [];
+
+  // Get submissions with level difficulty
+  const { data: submissions } = await supabase
+    .from('submissions')
+    .select(`
+      user_id,
+      level_id,
+      status,
+      level:levels(difficulty)
+    `);
+
+  // Calculate stats for each student
+  const studentsWithStats = students.map(student => {
+    const studentSubmissions = submissions?.filter(s => s.user_id === student.id) || [];
+
+    // Count unique levels with passed submissions
+    const passedSubmissions = studentSubmissions.filter(s => s.status === 'passed');
+    const passedLevels = new Set(passedSubmissions.map(s => s.level_id));
+    const completedLevels = passedLevels.size;
+
+    const successRate = calculateSuccessRate(
+      passedSubmissions.length,
+      studentSubmissions.length
+    );
+
+    // Calculate weighted score based on difficulty
+    let weightedScore = 0;
+    const difficulties: number[] = [];
+
+    passedSubmissions.forEach(sub => {
+      const difficulty = sub.level?.difficulty;
+      if (typeof difficulty === 'number') {
+        difficulties.push(difficulty);
+        weightedScore += getDifficultyWeight(difficulty);
+      }
+    });
+
+    const averageDifficulty = difficulties.length > 0
+      ? Math.round((difficulties.reduce((sum, d) => sum + d, 0) / difficulties.length) * 10) / 10
+      : 0;
+
+    return {
+      student,
+      completedLevels,
+      successRate,
+      weightedScore: Math.round(weightedScore * 10) / 10,
+      averageDifficulty,
+    };
+  });
+
+  // Sort by weighted score (which accounts for difficulty)
+  return studentsWithStats
+    .sort((a, b) => {
+      if (b.weightedScore !== a.weightedScore) {
+        return b.weightedScore - a.weightedScore;
+      }
+      return b.completedLevels - a.completedLevels;
+    })
+    .slice(0, limit)
+    .map((s, index) => ({ ...s, rank: index + 1 }));
 }

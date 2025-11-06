@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Spinner } from '@/shared/components/ui';
 import { getLevels } from '../api/levelsApi';
 import type { Level } from '@/shared/types';
+import { getDifficultyLabel, getDifficultyBadgeClass } from '@/features/teacher/utils/difficultyUtils';
 
 export function LevelsListPage() {
   const [levels, setLevels] = useState<Level[]>([]);
@@ -36,24 +37,6 @@ export function LevelsListPage() {
     acc[topic].push(level);
     return acc;
   }, {} as Record<string, Level[]>);
-
-  const getDifficultyLabel = (difficulty: string) => {
-    const labels = {
-      easy: 'Легко',
-      medium: 'Средне',
-      hard: 'Сложно'
-    };
-    return labels[difficulty as keyof typeof labels] || difficulty;
-  };
-
-  const getDifficultyColor = (difficulty: string) => {
-    const colors = {
-      easy: 'bg-green-500/10 text-green-400 border-green-500/20',
-      medium: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-      hard: 'bg-red-500/10 text-red-400 border-red-500/20'
-    };
-    return colors[difficulty as keyof typeof colors] || 'bg-learning-surface text-learning-text';
-  };
 
   if (loading) {
     return (
@@ -123,8 +106,8 @@ export function LevelsListPage() {
                   <h3 className="text-lg font-semibold text-learning-text group-hover:text-learning-accent transition-colors">
                     {level.title}
                   </h3>
-                  <span className={`text-xs px-2 py-1 rounded-full border ${getDifficultyColor(level.difficulty)}`}>
-                    {getDifficultyLabel(level.difficulty)}
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${getDifficultyBadgeClass(level.difficulty)}`}>
+                    {level.difficulty}/10 • {getDifficultyLabel(level.difficulty)}
                   </span>
                 </div>
 

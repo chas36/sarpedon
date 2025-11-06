@@ -8,17 +8,21 @@ import { ProgressLineChart } from '../components/charts/ProgressLineChart';
 import { DistributionBarChart } from '../components/charts/DistributionBarChart';
 import { ActivityHeatmap } from '../components/charts/ActivityHeatmap';
 import {
+  getAllClasses,
   getOverallStatistics,
-  getTopStudents,
+  getTopStudentsWeighted,
   getStrugglingStudents,
   getProgressOverTime,
   getStudentsDistribution,
   getAggregatedActivity,
   getRecentActivity,
+  getDifficultyWeightedStats,
 } from '../api/statisticsApi';
 import type { Profile, Submission, Level } from '@/shared/types';
 
 export function StatisticsPage() {
+  const [selectedClass, setSelectedClass] = useState<string>('');
+  const [classes, setClasses] = useState<string[]>([]);
   const [stats, setStats] = useState<{
     totalStudents: number;
     totalLevels: number;
@@ -26,11 +30,22 @@ export function StatisticsPage() {
     averageSuccessRate: number;
     activeStudentsLast7Days: number;
   } | null>(null);
+  const [difficultyStats, setDifficultyStats] = useState<{
+    averageDifficulty: number;
+    difficultyDistribution: {
+      easy: number;
+      medium: number;
+      hard: number;
+      veryHard: number;
+    };
+  } | null>(null);
   const [topStudents, setTopStudents] = useState<
     Array<{
       student: Profile;
       completedLevels: number;
       successRate: number;
+      weightedScore?: number;
+      averageDifficulty?: number;
       rank: number;
     }>
   >([]);
@@ -62,34 +77,52 @@ export function StatisticsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadStatistics();
+    loadClasses();
   }, []);
+
+  useEffect(() => {
+    loadStatistics();
+  }, [selectedClass]);
+
+  async function loadClasses() {
+    try {
+      const classesData = await getAllClasses();
+      setClasses(classesData);
+    } catch (err) {
+      console.error('Failed to load classes:', err);
+    }
+  }
 
   async function loadStatistics() {
     try {
       setLoading(true);
       setError(null);
 
+      const className = selectedClass || undefined;
+
       const [
         statsData,
         topData,
+        difficultyData,
         strugglingData,
         progressData,
         distributionData,
         activityData,
         recentData,
       ] = await Promise.all([
-        getOverallStatistics(),
-        getTopStudents(10),
-        getStrugglingStudents(),
-        getProgressOverTime(30),
-        getStudentsDistribution(),
-        getAggregatedActivity(60),
-        getRecentActivity(20),
+        getOverallStatistics(className),
+        getTopStudentsWeighted(10, className),
+        getDifficultyWeightedStats(className),
+        getStrugglingStudents(className),
+        getProgressOverTime(30, className),
+        getStudentsDistribution(className),
+        getAggregatedActivity(60, className),
+        getRecentActivity(20, className),
       ]);
 
       setStats(statsData);
       setTopStudents(topData);
+      setDifficultyStats(difficultyData);
       setStrugglingStudents(strugglingData);
       setProgressData(progressData);
       setDistribution(distributionData);
@@ -121,17 +154,43 @@ export function StatisticsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-admin-text">Статистика</h1>
-        <p className="text-admin-muted mt-1">
-          Общий обзор успеваемости всех учеников
-        </p>
+      {/* Header with Class Filter */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-admin-text">Статистика</h1>
+          <p className="text-admin-muted mt-1">
+            {selectedClass
+              ? `Статистика класса ${selectedClass}`
+              : 'Общий обзор успеваемости всех учеников'}
+          </p>
+        </div>
+
+        {/* Class Filter */}
+        {classes.length > 0 && (
+          <div className="flex items-center gap-3">
+            <label htmlFor="class-filter" className="text-sm text-admin-muted">
+              Фильтр по классу:
+            </label>
+            <select
+              id="class-filter"
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+              className="px-4 py-2 bg-admin-surface border border-admin-muted/20 rounded-lg text-admin-text focus:outline-none focus:ring-2 focus:ring-admin-accent"
+            >
+              <option value="">Все классы</option>
+              {classes.map((className) => (
+                <option key={className} value={className}>
+                  {className}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Overview Cards */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <StatCard title="Всего учеников" value={stats.totalStudents} />
           <StatCard title="Всего уровней" value={stats.totalLevels} />
           <StatCard title="Всего попыток" value={stats.totalSubmissions} />
@@ -139,7 +198,31 @@ export function StatisticsPage() {
             title="Средняя успешность"
             value={`${stats.averageSuccessRate}%`}
           />
+          {difficultyStats && (
+            <StatCard
+              title="Средняя сложность"
+              value={difficultyStats.averageDifficulty}
+              subtitle="из 10"
+            />
+          )}
         </div>
+      )}
+
+      {/* Difficulty Distribution */}
+      {difficultyStats && (
+        <Card>
+          <h2 className="text-xl font-semibold text-admin-text mb-4">
+            Распределение решенных задач по сложности
+          </h2>
+          <DistributionBarChart
+            data={[
+              { label: 'Легкие (1-3)', count: difficultyStats.difficultyDistribution.easy, color: '#10b981' },
+              { label: 'Средние (4-5)', count: difficultyStats.difficultyDistribution.medium, color: '#f59e0b' },
+              { label: 'Сложные (6-7)', count: difficultyStats.difficultyDistribution.hard, color: '#ef4444' },
+              { label: 'Очень сложные (8-10)', count: difficultyStats.difficultyDistribution.veryHard, color: '#dc2626' },
+            ]}
+          />
+        </Card>
       )}
 
       {/* Progress Chart */}
@@ -187,8 +270,11 @@ export function StatisticsPage() {
         <Card>
           <h2 className="text-xl font-semibold text-admin-text mb-4">
             Топ 10 учеников
+            <span className="text-sm text-admin-muted font-normal ml-2">
+              (с учетом сложности)
+            </span>
           </h2>
-          <TopStudentsList students={topStudents} />
+          <TopStudentsList students={topStudents} showWeightedScore={true} />
         </Card>
 
         <Card>

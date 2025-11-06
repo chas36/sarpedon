@@ -4,6 +4,7 @@ import { getLevelsWithStats, deleteLevel } from '@/features/learning/api/levelsA
 import { Button, Spinner } from '@/shared/components/ui';
 import { AILevelGeneratorModal } from '../components/AILevelGeneratorModal';
 import type { Level } from '@/shared/types';
+import { getDifficultyLabel, getDifficultyBadgeClass } from '../utils/difficultyUtils';
 
 export function LevelsManagePage() {
   const navigate = useNavigate();
@@ -43,32 +44,6 @@ export function LevelsManagePage() {
       alert('Ошибка при удалении уровня: ' + (err instanceof Error ? err.message : 'Unknown error'));
     } finally {
       setDeletingId(null);
-    }
-  }
-
-  function getDifficultyBadgeColor(difficulty: string) {
-    switch (difficulty) {
-      case 'easy':
-        return 'bg-green-500/20 text-green-400';
-      case 'medium':
-        return 'bg-yellow-500/20 text-yellow-400';
-      case 'hard':
-        return 'bg-red-500/20 text-red-400';
-      default:
-        return 'bg-gray-500/20 text-gray-400';
-    }
-  }
-
-  function getDifficultyLabel(difficulty: string) {
-    switch (difficulty) {
-      case 'easy':
-        return 'Легкий';
-      case 'medium':
-        return 'Средний';
-      case 'hard':
-        return 'Сложный';
-      default:
-        return difficulty;
     }
   }
 
@@ -128,27 +103,33 @@ export function LevelsManagePage() {
       />
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-admin-surface rounded-lg p-4 border border-admin-muted/10">
           <div className="text-sm text-admin-muted">Всего уровней</div>
           <div className="text-2xl font-bold text-admin-text mt-1">{levels.length}</div>
         </div>
         <div className="bg-admin-surface rounded-lg p-4 border border-admin-muted/10">
-          <div className="text-sm text-admin-muted">Легкие</div>
+          <div className="text-sm text-admin-muted">Легкие (1-3)</div>
           <div className="text-2xl font-bold text-green-400 mt-1">
-            {levels.filter(l => l.difficulty === 'easy').length}
+            {levels.filter(l => typeof l.difficulty === 'number' && l.difficulty <= 3).length}
           </div>
         </div>
         <div className="bg-admin-surface rounded-lg p-4 border border-admin-muted/10">
-          <div className="text-sm text-admin-muted">Средние</div>
+          <div className="text-sm text-admin-muted">Средние (4-5)</div>
           <div className="text-2xl font-bold text-yellow-400 mt-1">
-            {levels.filter(l => l.difficulty === 'medium').length}
+            {levels.filter(l => typeof l.difficulty === 'number' && l.difficulty >= 4 && l.difficulty <= 5).length}
           </div>
         </div>
         <div className="bg-admin-surface rounded-lg p-4 border border-admin-muted/10">
-          <div className="text-sm text-admin-muted">Сложные</div>
+          <div className="text-sm text-admin-muted">Сложные (6-7)</div>
           <div className="text-2xl font-bold text-red-400 mt-1">
-            {levels.filter(l => l.difficulty === 'hard').length}
+            {levels.filter(l => typeof l.difficulty === 'number' && l.difficulty >= 6 && l.difficulty <= 7).length}
+          </div>
+        </div>
+        <div className="bg-admin-surface rounded-lg p-4 border border-admin-muted/10">
+          <div className="text-sm text-admin-muted">Очень сложные (8-10)</div>
+          <div className="text-2xl font-bold text-red-600 mt-1">
+            {levels.filter(l => typeof l.difficulty === 'number' && l.difficulty >= 8).length}
           </div>
         </div>
       </div>
@@ -204,8 +185,8 @@ export function LevelsManagePage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded ${getDifficultyBadgeColor(level.difficulty)}`}>
-                      {getDifficultyLabel(level.difficulty)}
+                    <span className={`px-2 py-1 text-xs font-medium rounded ${getDifficultyBadgeClass(level.difficulty)}`}>
+                      {level.difficulty}/10 • {getDifficultyLabel(level.difficulty)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-admin-text">
