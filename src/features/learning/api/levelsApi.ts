@@ -24,6 +24,26 @@ export async function getLevelById(id: string): Promise<Level> {
   return data;
 }
 
+/**
+ * Get the next level in sequence after the given level
+ */
+export async function getNextLevel(currentLevelId: string): Promise<Level | null> {
+  // First get the current level to know its order_index
+  const currentLevel = await getLevelById(currentLevelId);
+
+  // Get the next level with higher order_index
+  const { data, error } = await supabase
+    .from('levels')
+    .select('*')
+    .gt('order_index', currentLevel.order_index)
+    .order('order_index', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function getLevelsByTopic(topic: string): Promise<Level[]> {
   const { data, error } = await supabase
     .from('levels')
