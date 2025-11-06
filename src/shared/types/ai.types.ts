@@ -3,6 +3,21 @@
  */
 
 /**
+ * Уровень владения студента
+ */
+export type ProficiencyLevel = 'beginner' | 'intermediate' | 'advanced';
+
+/**
+ * Профиль студента для адаптивных подсказок
+ */
+export interface StudentProfile {
+  proficiency_level: ProficiencyLevel;
+  proficiency_score: number;  // 0-100
+  weak_areas?: string[];      // Слабые места студента
+  common_mistakes?: string[]; // Частые ошибки
+}
+
+/**
  * Запрос на анализ кода с помощью AI
  */
 export interface AIFeedbackRequest {
@@ -18,6 +33,7 @@ export interface AIFeedbackRequest {
   }[];
   hints?: string[];
   reference_solution?: string;  // Для сравнения подходов
+  student_profile?: StudentProfile;  // Профиль студента для адаптивных подсказок
 }
 
 /**
