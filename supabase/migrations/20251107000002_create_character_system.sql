@@ -3,6 +3,11 @@
 -- Description: Tables for character interaction system (Muskva, Johnny, Panda, Tapka & Potapka)
 
 -- =====================================================
+-- Enable UUID extension
+-- =====================================================
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- =====================================================
 -- Table: character_interactions
 -- Purpose: Store all interactions between users and characters
 -- =====================================================
