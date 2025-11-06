@@ -9,6 +9,9 @@
 --
 -- This SQL is kept for reference but may not work due to auth schema restrictions
 
+-- Enable pgcrypto extension for password hashing
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Alternative: Check if users exist first
 DO $$
 DECLARE
