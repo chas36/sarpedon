@@ -7,6 +7,7 @@ DROP POLICY IF EXISTS "Students can create own submissions" ON public.submission
 DROP POLICY IF EXISTS "Students can update own submissions" ON public.submissions;
 DROP POLICY IF EXISTS "Teachers can view all submissions" ON public.submissions;
 DROP POLICY IF EXISTS "Teachers can update all submissions" ON public.submissions;
+DROP POLICY IF EXISTS "Teachers can delete submissions" ON public.submissions;
 
 -- Create new policies that properly check profiles table
 

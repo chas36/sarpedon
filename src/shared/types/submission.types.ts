@@ -12,6 +12,15 @@ export interface Submission {
   level_id: string;
   code: string;
   status: SubmissionStatus;
+  quality_metrics?: {
+    overall_score: number;
+    readability: number;
+    correctness: number;
+    efficiency: number;
+    best_practices: number;
+  };
+  ai_feedback?: string;
+  version: number;
   submitted_at: string;
   completed_at: string | null;
   created_at: string;
@@ -22,9 +31,18 @@ export interface Submission {
  * Data for creating a new submission
  */
 export interface CreateSubmissionData {
+  user_id: string;
   level_id: string;
   code: string;
   status?: SubmissionStatus;
+  quality_metrics?: {
+    overall_score: number;
+    readability: number;
+    correctness: number;
+    efficiency: number;
+    best_practices: number;
+  };
+  ai_feedback?: string;
 }
 
 /**
