@@ -6,11 +6,14 @@ interface TopStudentsListProps {
     student: Profile;
     completedLevels: number;
     successRate: number;
+    weightedScore?: number;
+    averageDifficulty?: number;
     rank: number;
   }>;
+  showWeightedScore?: boolean;
 }
 
-export function TopStudentsList({ students }: TopStudentsListProps) {
+export function TopStudentsList({ students, showWeightedScore = false }: TopStudentsListProps) {
   if (students.length === 0) {
     return (
       <div className="text-center text-admin-muted py-8">
@@ -51,12 +54,25 @@ export function TopStudentsList({ students }: TopStudentsListProps) {
           </div>
 
           <div className="text-right">
-            <div className="text-sm font-medium text-admin-text">
-              {item.completedLevels} задач
-            </div>
-            <div className="text-xs text-admin-muted">
-              {item.successRate}% успешность
-            </div>
+            {showWeightedScore && item.weightedScore !== undefined ? (
+              <>
+                <div className="text-sm font-medium text-admin-accent">
+                  {item.weightedScore} баллов
+                </div>
+                <div className="text-xs text-admin-muted">
+                  {item.completedLevels} задач • ср. сложность {item.averageDifficulty}/10
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-sm font-medium text-admin-text">
+                  {item.completedLevels} задач
+                </div>
+                <div className="text-xs text-admin-muted">
+                  {item.successRate}% успешность
+                </div>
+              </>
+            )}
           </div>
         </Link>
       ))}

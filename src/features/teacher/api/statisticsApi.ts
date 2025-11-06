@@ -9,6 +9,7 @@ import {
   calculateAverageTime,
 } from '../utils/statsCalculations';
 import { fillMissingDays } from '../utils/dateUtils';
+import { getDifficultyWeight } from '../utils/difficultyUtils';
 
 /**
  * Get all unique class names from student profiles
@@ -972,4 +973,169 @@ export async function getClassActivity(
     date: d.date,
     activityCount: d.count,
   }));
+}
+
+/**
+ * Get difficulty-weighted statistics for students
+ */
+export async function getDifficultyWeightedStats(className?: string): Promise<{
+  averageDifficulty: number;
+  difficultyDistribution: {
+    easy: number;      // 1-3
+    medium: number;    // 4-5
+    hard: number;      // 6-7
+    veryHard: number;  // 8-10
+  };
+}> {
+  // Get student IDs for filtering if class is specified
+  let studentIds: string[] | undefined;
+  if (className) {
+    const { data: students } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'student')
+      .eq('class', className);
+    studentIds = students?.map(s => s.id);
+  }
+
+  // Get all passed submissions with level difficulty
+  let submissionsQuery = supabase
+    .from('submissions')
+    .select(`
+      level_id,
+      status,
+      level:levels(difficulty)
+    `)
+    .eq('status', 'passed');
+
+  if (studentIds) {
+    submissionsQuery = submissionsQuery.in('user_id', studentIds);
+  }
+
+  const { data: submissions } = await submissionsQuery;
+
+  if (!submissions || submissions.length === 0) {
+    return {
+      averageDifficulty: 0,
+      difficultyDistribution: {
+        easy: 0,
+        medium: 0,
+        hard: 0,
+        veryHard: 0,
+      },
+    };
+  }
+
+  // Calculate average difficulty of completed levels
+  const difficulties = submissions
+    .map(s => s.level?.difficulty)
+    .filter((d): d is number => typeof d === 'number');
+
+  const averageDifficulty = difficulties.length > 0
+    ? Math.round((difficulties.reduce((sum, d) => sum + d, 0) / difficulties.length) * 10) / 10
+    : 0;
+
+  // Calculate distribution
+  const distribution = {
+    easy: difficulties.filter(d => d <= 3).length,
+    medium: difficulties.filter(d => d >= 4 && d <= 5).length,
+    hard: difficulties.filter(d => d >= 6 && d <= 7).length,
+    veryHard: difficulties.filter(d => d >= 8).length,
+  };
+
+  return {
+    averageDifficulty,
+    difficultyDistribution: distribution,
+  };
+}
+
+/**
+ * Get top students with difficulty-weighted scoring
+ */
+export async function getTopStudentsWeighted(
+  limit: number = 10,
+  className?: string
+): Promise<
+  Array<{
+    student: Profile;
+    completedLevels: number;
+    successRate: number;
+    weightedScore: number;
+    averageDifficulty: number;
+    rank: number;
+  }>
+> {
+  // Get all students (filtered by class if specified)
+  let studentsQuery = supabase
+    .from('profiles')
+    .select('*')
+    .eq('role', 'student');
+
+  if (className) {
+    studentsQuery = studentsQuery.eq('class', className);
+  }
+
+  const { data: students } = await studentsQuery;
+
+  if (!students) return [];
+
+  // Get submissions with level difficulty
+  const { data: submissions } = await supabase
+    .from('submissions')
+    .select(`
+      user_id,
+      level_id,
+      status,
+      level:levels(difficulty)
+    `);
+
+  // Calculate stats for each student
+  const studentsWithStats = students.map(student => {
+    const studentSubmissions = submissions?.filter(s => s.user_id === student.id) || [];
+
+    // Count unique levels with passed submissions
+    const passedSubmissions = studentSubmissions.filter(s => s.status === 'passed');
+    const passedLevels = new Set(passedSubmissions.map(s => s.level_id));
+    const completedLevels = passedLevels.size;
+
+    const successRate = calculateSuccessRate(
+      passedSubmissions.length,
+      studentSubmissions.length
+    );
+
+    // Calculate weighted score based on difficulty
+    let weightedScore = 0;
+    const difficulties: number[] = [];
+
+    passedSubmissions.forEach(sub => {
+      const difficulty = sub.level?.difficulty;
+      if (typeof difficulty === 'number') {
+        difficulties.push(difficulty);
+        weightedScore += getDifficultyWeight(difficulty);
+      }
+    });
+
+    const averageDifficulty = difficulties.length > 0
+      ? Math.round((difficulties.reduce((sum, d) => sum + d, 0) / difficulties.length) * 10) / 10
+      : 0;
+
+    return {
+      student,
+      completedLevels,
+      successRate,
+      weightedScore: Math.round(weightedScore * 10) / 10,
+      averageDifficulty,
+    };
+  });
+
+  // Sort by weighted score (which accounts for difficulty)
+  return studentsWithStats
+    .sort((a, b) => {
+      if (b.weightedScore !== a.weightedScore) {
+        return b.weightedScore - a.weightedScore;
+      }
+      return b.completedLevels - a.completedLevels;
+    })
+    .slice(0, limit)
+    .map((s, index) => ({ ...s, rank: index + 1 }));
 }

@@ -10,12 +10,13 @@ import { ActivityHeatmap } from '../components/charts/ActivityHeatmap';
 import {
   getAllClasses,
   getOverallStatistics,
-  getTopStudents,
+  getTopStudentsWeighted,
   getStrugglingStudents,
   getProgressOverTime,
   getStudentsDistribution,
   getAggregatedActivity,
   getRecentActivity,
+  getDifficultyWeightedStats,
 } from '../api/statisticsApi';
 import type { Profile, Submission, Level } from '@/shared/types';
 
@@ -29,11 +30,22 @@ export function StatisticsPage() {
     averageSuccessRate: number;
     activeStudentsLast7Days: number;
   } | null>(null);
+  const [difficultyStats, setDifficultyStats] = useState<{
+    averageDifficulty: number;
+    difficultyDistribution: {
+      easy: number;
+      medium: number;
+      hard: number;
+      veryHard: number;
+    };
+  } | null>(null);
   const [topStudents, setTopStudents] = useState<
     Array<{
       student: Profile;
       completedLevels: number;
       successRate: number;
+      weightedScore?: number;
+      averageDifficulty?: number;
       rank: number;
     }>
   >([]);
@@ -91,6 +103,7 @@ export function StatisticsPage() {
       const [
         statsData,
         topData,
+        difficultyData,
         strugglingData,
         progressData,
         distributionData,
@@ -98,7 +111,8 @@ export function StatisticsPage() {
         recentData,
       ] = await Promise.all([
         getOverallStatistics(className),
-        getTopStudents(10, className),
+        getTopStudentsWeighted(10, className),
+        getDifficultyWeightedStats(className),
         getStrugglingStudents(className),
         getProgressOverTime(30, className),
         getStudentsDistribution(className),
@@ -108,6 +122,7 @@ export function StatisticsPage() {
 
       setStats(statsData);
       setTopStudents(topData);
+      setDifficultyStats(difficultyData);
       setStrugglingStudents(strugglingData);
       setProgressData(progressData);
       setDistribution(distributionData);
@@ -175,7 +190,7 @@ export function StatisticsPage() {
 
       {/* Overview Cards */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <StatCard title="Всего учеников" value={stats.totalStudents} />
           <StatCard title="Всего уровней" value={stats.totalLevels} />
           <StatCard title="Всего попыток" value={stats.totalSubmissions} />
@@ -183,7 +198,31 @@ export function StatisticsPage() {
             title="Средняя успешность"
             value={`${stats.averageSuccessRate}%`}
           />
+          {difficultyStats && (
+            <StatCard
+              title="Средняя сложность"
+              value={difficultyStats.averageDifficulty}
+              subtitle="из 10"
+            />
+          )}
         </div>
+      )}
+
+      {/* Difficulty Distribution */}
+      {difficultyStats && (
+        <Card>
+          <h2 className="text-xl font-semibold text-admin-text mb-4">
+            Распределение решенных задач по сложности
+          </h2>
+          <DistributionBarChart
+            data={[
+              { label: 'Легкие (1-3)', count: difficultyStats.difficultyDistribution.easy, color: '#10b981' },
+              { label: 'Средние (4-5)', count: difficultyStats.difficultyDistribution.medium, color: '#f59e0b' },
+              { label: 'Сложные (6-7)', count: difficultyStats.difficultyDistribution.hard, color: '#ef4444' },
+              { label: 'Очень сложные (8-10)', count: difficultyStats.difficultyDistribution.veryHard, color: '#dc2626' },
+            ]}
+          />
+        </Card>
       )}
 
       {/* Progress Chart */}
@@ -231,8 +270,11 @@ export function StatisticsPage() {
         <Card>
           <h2 className="text-xl font-semibold text-admin-text mb-4">
             Топ 10 учеников
+            <span className="text-sm text-admin-muted font-normal ml-2">
+              (с учетом сложности)
+            </span>
           </h2>
-          <TopStudentsList students={topStudents} />
+          <TopStudentsList students={topStudents} showWeightedScore={true} />
         </Card>
 
         <Card>
