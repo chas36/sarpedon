@@ -80,7 +80,7 @@ COMMENT ON COLUMN public.proficiency_history.changed_by IS 'Teacher who made man
 -- 4. CREATE FUNCTION TO CALCULATE PROFICIENCY SCORE
 -- =============================================================================
 
-CREATE OR REPLACE FUNCTION calculate_proficiency_score(student_id UUID)
+CREATE OR REPLACE FUNCTION calculate_proficiency_score(p_student_id UUID)
 RETURNS TABLE(score INTEGER, level TEXT) AS $$
 DECLARE
   completion_rate FLOAT;
@@ -110,7 +110,7 @@ BEGIN
   INTO completion_rate, avg_quality, avg_issues_count
   FROM public.level_progress lp
   LEFT JOIN public.submissions s ON s.user_id = lp.student_id AND s.level_id = lp.level_id
-  WHERE lp.student_id = student_id;
+  WHERE lp.student_id = p_student_id;
 
   -- Calculate final score
   final_score := GREATEST(0, LEAST(100,
@@ -154,8 +154,8 @@ BEGIN
   END IF;
 
   -- Calculate new proficiency
-  SELECT * INTO new_score, new_level
-  FROM calculate_proficiency_score(NEW.user_id);
+  SELECT calc.score, calc.level INTO new_score, new_level
+  FROM calculate_proficiency_score(NEW.user_id) AS calc;
 
   -- Update profile
   UPDATE public.profiles
@@ -196,10 +196,10 @@ COMMENT ON TRIGGER trigger_update_proficiency ON public.submissions IS 'Automati
 
 -- Function to manually set student proficiency level
 CREATE OR REPLACE FUNCTION set_student_proficiency_manual(
-  student_id UUID,
-  new_level TEXT,
-  teacher_id UUID,
-  reason_text TEXT DEFAULT 'manual_override'
+  p_student_id UUID,
+  p_new_level TEXT,
+  p_teacher_id UUID,
+  p_reason_text TEXT DEFAULT 'manual_override'
 )
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -207,40 +207,40 @@ DECLARE
   old_score INTEGER;
 BEGIN
   -- Validate level
-  IF new_level NOT IN ('beginner', 'intermediate', 'advanced') THEN
-    RAISE EXCEPTION 'Invalid proficiency level: %', new_level;
+  IF p_new_level NOT IN ('beginner', 'intermediate', 'advanced') THEN
+    RAISE EXCEPTION 'Invalid proficiency level: %', p_new_level;
   END IF;
 
   -- Validate student exists
-  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = student_id AND role = 'student') THEN
-    RAISE EXCEPTION 'Student not found: %', student_id;
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = p_student_id AND role = 'student') THEN
+    RAISE EXCEPTION 'Student not found: %', p_student_id;
   END IF;
 
   -- Get current values
   SELECT proficiency_level, proficiency_score
   INTO old_level, old_score
   FROM public.profiles
-  WHERE id = student_id;
+  WHERE id = p_student_id;
 
   -- Update profile
   UPDATE public.profiles
   SET
-    proficiency_level = new_level,
+    proficiency_level = p_new_level,
     proficiency_manual_override = true,
     proficiency_last_assessed = NOW()
-  WHERE id = student_id;
+  WHERE id = p_student_id;
 
   -- Log history
   INSERT INTO public.proficiency_history (
     user_id, old_level, new_level, old_score, new_score, reason, changed_by
   ) VALUES (
-    student_id, old_level, new_level, old_score,
-    CASE new_level
+    p_student_id, old_level, p_new_level, old_score,
+    CASE p_new_level
       WHEN 'beginner' THEN 20
       WHEN 'intermediate' THEN 55
       WHEN 'advanced' THEN 85
     END,
-    reason_text, teacher_id
+    p_reason_text, p_teacher_id
   );
 
   RETURN true;
@@ -250,12 +250,12 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 COMMENT ON FUNCTION set_student_proficiency_manual IS 'Allows teachers to manually override student proficiency level';
 
 -- Function to re-enable auto-calculation
-CREATE OR REPLACE FUNCTION enable_auto_proficiency(student_id UUID)
+CREATE OR REPLACE FUNCTION enable_auto_proficiency(p_student_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
   UPDATE public.profiles
   SET proficiency_manual_override = false
-  WHERE id = student_id AND role = 'student';
+  WHERE id = p_student_id AND role = 'student';
 
   RETURN FOUND;
 END;
@@ -364,8 +364,8 @@ BEGIN
     SELECT id FROM public.profiles WHERE role = 'student'
   LOOP
     -- Calculate proficiency
-    SELECT * INTO calc_score, calc_level
-    FROM calculate_proficiency_score(student_record.id);
+    SELECT calc.score, calc.level INTO calc_score, calc_level
+    FROM calculate_proficiency_score(student_record.id) AS calc;
 
     -- Update profile
     UPDATE public.profiles
