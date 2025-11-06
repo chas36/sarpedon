@@ -237,15 +237,15 @@ export async function getProgressOverTime(days: number = 30): Promise<
 
   const { data: progress } = await supabase
     .from('level_progress')
-    .select('created_at, status')
+    .select('completed_at, status')
     .eq('status', 'completed')
-    .gte('created_at', startDate.toISOString());
+    .gte('completed_at', startDate.toISOString());
 
   if (!progress) return [];
 
   // Aggregate by day
   const activityByDay = aggregateActivityByDay(
-    progress.map(p => ({ submitted_at: p.created_at }))
+    progress.map(p => ({ submitted_at: p.completed_at }))
   );
 
   // Fill missing days
@@ -834,16 +834,16 @@ export async function getClassProgressOverTime(
   // Get progress completions for these students
   const { data: progress } = await supabase
     .from('level_progress')
-    .select('created_at')
-    .in('user_id', students.map(s => s.id))
+    .select('completed_at')
+    .in('student_id', students.map(s => s.id))
     .eq('status', 'completed')
-    .gte('created_at', startDate.toISOString());
+    .gte('completed_at', startDate.toISOString());
 
   if (!progress) return [];
 
   // Aggregate by day
   const activityByDay = aggregateActivityByDay(
-    progress.map(p => ({ submitted_at: p.created_at }))
+    progress.map(p => ({ submitted_at: p.completed_at }))
   );
 
   // Fill missing days
