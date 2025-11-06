@@ -8,6 +8,7 @@ import { ProgressLineChart } from '../components/charts/ProgressLineChart';
 import { DistributionBarChart } from '../components/charts/DistributionBarChart';
 import { ActivityHeatmap } from '../components/charts/ActivityHeatmap';
 import {
+  getAllClasses,
   getOverallStatistics,
   getTopStudents,
   getStrugglingStudents,
@@ -19,6 +20,8 @@ import {
 import type { Profile, Submission, Level } from '@/shared/types';
 
 export function StatisticsPage() {
+  const [selectedClass, setSelectedClass] = useState<string>('');
+  const [classes, setClasses] = useState<string[]>([]);
   const [stats, setStats] = useState<{
     totalStudents: number;
     totalLevels: number;
@@ -62,13 +65,28 @@ export function StatisticsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadStatistics();
+    loadClasses();
   }, []);
+
+  useEffect(() => {
+    loadStatistics();
+  }, [selectedClass]);
+
+  async function loadClasses() {
+    try {
+      const classesData = await getAllClasses();
+      setClasses(classesData);
+    } catch (err) {
+      console.error('Failed to load classes:', err);
+    }
+  }
 
   async function loadStatistics() {
     try {
       setLoading(true);
       setError(null);
+
+      const className = selectedClass || undefined;
 
       const [
         statsData,
@@ -79,13 +97,13 @@ export function StatisticsPage() {
         activityData,
         recentData,
       ] = await Promise.all([
-        getOverallStatistics(),
-        getTopStudents(10),
-        getStrugglingStudents(),
-        getProgressOverTime(30),
-        getStudentsDistribution(),
-        getAggregatedActivity(60),
-        getRecentActivity(20),
+        getOverallStatistics(className),
+        getTopStudents(10, className),
+        getStrugglingStudents(className),
+        getProgressOverTime(30, className),
+        getStudentsDistribution(className),
+        getAggregatedActivity(60, className),
+        getRecentActivity(20, className),
       ]);
 
       setStats(statsData);
@@ -121,12 +139,38 @@ export function StatisticsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-admin-text">Статистика</h1>
-        <p className="text-admin-muted mt-1">
-          Общий обзор успеваемости всех учеников
-        </p>
+      {/* Header with Class Filter */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-admin-text">Статистика</h1>
+          <p className="text-admin-muted mt-1">
+            {selectedClass
+              ? `Статистика класса ${selectedClass}`
+              : 'Общий обзор успеваемости всех учеников'}
+          </p>
+        </div>
+
+        {/* Class Filter */}
+        {classes.length > 0 && (
+          <div className="flex items-center gap-3">
+            <label htmlFor="class-filter" className="text-sm text-admin-muted">
+              Фильтр по классу:
+            </label>
+            <select
+              id="class-filter"
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+              className="px-4 py-2 bg-admin-surface border border-admin-muted/20 rounded-lg text-admin-text focus:outline-none focus:ring-2 focus:ring-admin-accent"
+            >
+              <option value="">Все классы</option>
+              {classes.map((className) => (
+                <option key={className} value={className}>
+                  {className}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Overview Cards */}

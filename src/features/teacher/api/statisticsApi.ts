@@ -11,9 +11,26 @@ import {
 import { fillMissingDays } from '../utils/dateUtils';
 
 /**
- * Get overall statistics for all students
+ * Get all unique class names from student profiles
  */
-export async function getOverallStatistics(): Promise<{
+export async function getAllClasses(): Promise<string[]> {
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('class')
+    .eq('role', 'student')
+    .not('class', 'is', null);
+
+  if (!profiles) return [];
+
+  // Get unique classes and sort them
+  const uniqueClasses = [...new Set(profiles.map(p => p.class).filter(Boolean))];
+  return uniqueClasses.sort();
+}
+
+/**
+ * Get overall statistics for all students or specific class
+ */
+export async function getOverallStatistics(className?: string): Promise<{
   totalStudents: number;
   totalLevels: number;
   totalSubmissions: number;
@@ -21,20 +38,43 @@ export async function getOverallStatistics(): Promise<{
   activeStudentsLast7Days: number;
 }> {
   // Get total students count
-  const { count: totalStudents } = await supabase
+  let studentsQuery = supabase
     .from('profiles')
     .select('*', { count: 'exact', head: true })
     .eq('role', 'student');
+
+  if (className) {
+    studentsQuery = studentsQuery.eq('class', className);
+  }
+
+  const { count: totalStudents } = await studentsQuery;
 
   // Get total levels count
   const { count: totalLevels } = await supabase
     .from('levels')
     .select('*', { count: 'exact', head: true });
 
-  // Get all submissions
-  const { data: submissions } = await supabase
+  // Get student IDs for filtering submissions
+  let studentIds: string[] | undefined;
+  if (className) {
+    const { data: students } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'student')
+      .eq('class', className);
+    studentIds = students?.map(s => s.id);
+  }
+
+  // Get all submissions (filtered by class if specified)
+  let submissionsQuery = supabase
     .from('submissions')
     .select('status, user_id, submitted_at');
+
+  if (studentIds) {
+    submissionsQuery = submissionsQuery.in('user_id', studentIds);
+  }
+
+  const { data: submissions } = await submissionsQuery;
 
   const totalSubmissions = submissions?.length || 0;
   const successfulSubmissions = submissions?.filter(s => s.status === 'passed').length || 0;
@@ -62,7 +102,7 @@ export async function getOverallStatistics(): Promise<{
 /**
  * Get top students by completed levels
  */
-export async function getTopStudents(limit: number = 10): Promise<
+export async function getTopStudents(limit: number = 10, className?: string): Promise<
   Array<{
     student: Profile;
     completedLevels: number;
@@ -70,11 +110,17 @@ export async function getTopStudents(limit: number = 10): Promise<
     rank: number;
   }>
 > {
-  // Get all students
-  const { data: students } = await supabase
+  // Get all students (filtered by class if specified)
+  let studentsQuery = supabase
     .from('profiles')
     .select('*')
     .eq('role', 'student');
+
+  if (className) {
+    studentsQuery = studentsQuery.eq('class', className);
+  }
+
+  const { data: students } = await studentsQuery;
 
   if (!students) return [];
 
@@ -122,7 +168,7 @@ export async function getTopStudents(limit: number = 10): Promise<
 /**
  * Get struggling students who need attention
  */
-export async function getStrugglingStudents(): Promise<
+export async function getStrugglingStudents(className?: string): Promise<
   Array<{
     student: Profile;
     completedLevels: number;
@@ -131,11 +177,17 @@ export async function getStrugglingStudents(): Promise<
     issue: 'low_success' | 'low_activity' | 'inactive';
   }>
 > {
-  // 1. Get all students
-  const { data: students } = await supabase
+  // 1. Get all students (filtered by class if specified)
+  let studentsQuery = supabase
     .from('profiles')
     .select('*')
     .eq('role', 'student');
+
+  if (className) {
+    studentsQuery = studentsQuery.eq('class', className);
+  }
+
+  const { data: students } = await studentsQuery;
 
   if (!students) return [];
 
@@ -197,12 +249,12 @@ export async function getStrugglingStudents(): Promise<
 }
 
 /**
- * Get recent activity across the platform
+ * Get recent activity across the platform or specific class
  */
-export async function getRecentActivity(limit: number = 20): Promise<
+export async function getRecentActivity(limit: number = 20, className?: string): Promise<
   Array<Submission & { student: Profile; level: Level }>
 > {
-  const { data: submissions } = await supabase
+  let submissionsQuery = supabase
     .from('submissions')
     .select(`
       *,
@@ -212,15 +264,32 @@ export async function getRecentActivity(limit: number = 20): Promise<
     .order('submitted_at', { ascending: false })
     .limit(limit);
 
+  // Filter by class if specified
+  if (className) {
+    // We need to filter by student's class through the join
+    const { data: students } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'student')
+      .eq('class', className);
+
+    const studentIds = students?.map(s => s.id) || [];
+    if (studentIds.length === 0) return [];
+
+    submissionsQuery = submissionsQuery.in('user_id', studentIds);
+  }
+
+  const { data: submissions } = await submissionsQuery;
+
   if (!submissions) return [];
 
   return submissions;
 }
 
 /**
- * Get progress over time for all students
+ * Get progress over time for all students or specific class
  */
-export async function getProgressOverTime(days: number = 30): Promise<
+export async function getProgressOverTime(days: number = 30, className?: string): Promise<
   Array<{
     date: string;
     count: number;
@@ -229,11 +298,28 @@ export async function getProgressOverTime(days: number = 30): Promise<
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
 
-  const { data: progress } = await supabase
+  // Get student IDs for filtering if class is specified
+  let studentIds: string[] | undefined;
+  if (className) {
+    const { data: students } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'student')
+      .eq('class', className);
+    studentIds = students?.map(s => s.id);
+  }
+
+  let progressQuery = supabase
     .from('level_progress')
     .select('completed_at, status')
     .eq('status', 'completed')
     .gte('completed_at', startDate.toISOString());
+
+  if (studentIds) {
+    progressQuery = progressQuery.in('student_id', studentIds);
+  }
+
+  const { data: progress } = await progressQuery;
 
   if (!progress) return [];
 
@@ -249,17 +335,23 @@ export async function getProgressOverTime(days: number = 30): Promise<
 /**
  * Get distribution of students by progress percentage
  */
-export async function getStudentsDistribution(): Promise<{
+export async function getStudentsDistribution(className?: string): Promise<{
   '0-25': number;
   '25-50': number;
   '50-75': number;
   '75-100': number;
 }> {
-  // Get all students
-  const { data: students } = await supabase
+  // Get all students (filtered by class if specified)
+  let studentsQuery = supabase
     .from('profiles')
     .select('id')
     .eq('role', 'student');
+
+  if (className) {
+    studentsQuery = studentsQuery.eq('class', className);
+  }
+
+  const { data: students } = await studentsQuery;
 
   if (!students) return { '0-25': 0, '25-50': 0, '50-75': 0, '75-100': 0 };
 
@@ -298,7 +390,7 @@ export async function getStudentsDistribution(): Promise<{
 /**
  * Get aggregated activity for heatmap
  */
-export async function getAggregatedActivity(days: number = 60): Promise<
+export async function getAggregatedActivity(days: number = 60, className?: string): Promise<
   Array<{
     date: string;
     activityCount: number;
@@ -307,10 +399,27 @@ export async function getAggregatedActivity(days: number = 60): Promise<
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
 
-  const { data: submissions } = await supabase
+  // Get student IDs for filtering if class is specified
+  let studentIds: string[] | undefined;
+  if (className) {
+    const { data: students } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'student')
+      .eq('class', className);
+    studentIds = students?.map(s => s.id);
+  }
+
+  let submissionsQuery = supabase
     .from('submissions')
     .select('submitted_at')
     .gte('submitted_at', startDate.toISOString());
+
+  if (studentIds) {
+    submissionsQuery = submissionsQuery.in('user_id', studentIds);
+  }
+
+  const { data: submissions } = await submissionsQuery;
 
   if (!submissions) return [];
 
