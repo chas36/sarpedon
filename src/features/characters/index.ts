@@ -32,5 +32,5 @@ export { selectCharacter, getCharacterDisplayName, getCharacterColors } from './
 export * from './api/characterApi';
 
 // Config
-export { CHARACTER_PHRASES, CHARACTER_EVENTS } from './config/characterPhrases';
-export { EVENT_PROBABILITIES, isHoliday } from './config/eventConfig';
+export { CHARACTER_PHRASES } from './config/characterPhrases';
+export { EVENT_PROBABILITIES, isHoliday, CHARACTER_EVENTS } from './config/eventConfig';
