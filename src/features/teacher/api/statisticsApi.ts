@@ -198,11 +198,7 @@ export async function getStrugglingStudents(): Promise<
  * Get recent activity across the platform
  */
 export async function getRecentActivity(limit: number = 20): Promise<
-  Array<{
-    submission: Submission;
-    student: Profile;
-    level: Level;
-  }>
+  Array<Submission & { student: Profile; level: Level }>
 > {
   const { data: submissions } = await supabase
     .from('submissions')
@@ -217,7 +213,7 @@ export async function getRecentActivity(limit: number = 20): Promise<
   if (!submissions) return [];
 
   return submissions.map(s => ({
-    submission: s,
+    ...s,
     student: s.profiles,
     level: s.levels,
   }));
@@ -389,10 +385,7 @@ export async function getStudentLevelProgress(
     const levelSubmissions = submissions?.filter(s => s.level_id === level.id) || [];
 
     const attempts = levelSubmissions.length;
-    const timeSpent = levelSubmissions.reduce(
-      (sum, s) => sum + (s.execution_time_ms || 0),
-      0
-    );
+    const timeSpent = 0; // execution_time_ms not available in submissions table
     const lastSubmission = levelSubmissions[0] || null;
     const isCorrect = levelSubmissions.some(s => s.status === 'passed');
 
@@ -441,6 +434,7 @@ export async function getStudentActivity(
 
 /**
  * Get time metrics for student
+ * Note: execution_time_ms is not available in submissions table
  */
 export async function getStudentTimeMetrics(
   studentId: string
@@ -449,30 +443,12 @@ export async function getStudentTimeMetrics(
   fastestSolveTime: number;
   slowestSolveTime: number;
 }> {
-  const { data: submissions } = await supabase
-    .from('submissions')
-    .select('execution_time_ms')
-    .eq('user_id', studentId)
-    .eq('status', 'passed')
-    .not('execution_time_ms', 'is', null);
-
-  if (!submissions || submissions.length === 0) {
-    return {
-      averageSolveTime: 0,
-      fastestSolveTime: 0,
-      slowestSolveTime: 0,
-    };
-  }
-
-  const times = submissions.map(s => s.execution_time_ms!);
-  const averageSolveTime = calculateAverageTime(submissions);
-  const fastestSolveTime = Math.min(...times);
-  const slowestSolveTime = Math.max(...times);
-
+  // execution_time_ms not available in submissions table
+  // Return placeholder values
   return {
-    averageSolveTime,
-    fastestSolveTime,
-    slowestSolveTime,
+    averageSolveTime: 0,
+    fastestSolveTime: 0,
+    slowestSolveTime: 0,
   };
 }
 
@@ -731,8 +707,8 @@ export async function getClassStatistics(className: string): Promise<{
   // Get progress for students in this class
   const { data: progress } = await supabase
     .from('level_progress')
-    .select('user_id, status')
-    .in('user_id', students.map(s => s.id));
+    .select('student_id, status')
+    .in('student_id', students.map(s => s.id));
 
   // Get submissions for students in this class
   const { data: submissions } = await supabase
