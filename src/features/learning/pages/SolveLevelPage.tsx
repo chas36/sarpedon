@@ -424,77 +424,93 @@ export function SolveLevelPage() {
 
         {/* Execution Results */}
         {executionResult && (
-          <div className="bg-learning-surface border border-learning-muted/10 rounded-lg p-4">
+          <div className="bg-learning-surface border border-learning-muted/10 rounded-lg p-4 space-y-4">
             <h2 className="text-base font-semibold text-learning-text mb-3">
               📊 Результаты выполнения
             </h2>
 
-            {executionResult.testResults && executionResult.testResults.length > 0 && (
-              <div className="space-y-2">
-                {executionResult.testResults.map((testResult, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-3 rounded ${
-                      testResult.passed
-                        ? 'bg-green-500/5 border border-green-500/10'
-                        : 'bg-red-500/5 border border-red-500/10'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <span className={`font-medium text-sm ${
-                        testResult.passed ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                        {testResult.passed ? '✓' : '✗'} Тест {idx + 1}
-                      </span>
-                    </div>
+            {/* Console Output Section - Always visible */}
+            <div className="bg-learning-bg border border-learning-muted/10 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-learning-text mb-2 flex items-center gap-2">
+                <span>🖥️</span>
+                Консольный вывод
+              </h3>
 
-                    {!testResult.passed && (
-                      <div className="text-xs space-y-2">
-                        <div>
-                          <div className="text-learning-muted mb-1">Ожидалось:</div>
-                          <pre className="bg-learning-bg p-2 rounded text-green-400">
-                            {testResult.expectedOutput}
-                          </pre>
-                        </div>
-                        <div>
-                          <div className="text-learning-muted mb-1">Получено:</div>
-                          <pre className="bg-learning-bg p-2 rounded text-red-400">
-                            {testResult.actualOutput || '(пусто)'}
-                          </pre>
-                        </div>
-                        {testResult.error && (
+              {executionResult.results.stdout || executionResult.results.stderr ? (
+                <div className="space-y-3">
+                  {executionResult.results.stdout && (
+                    <div>
+                      <div className="text-xs text-learning-muted mb-1">Стандартный вывод (stdout):</div>
+                      <pre className="bg-learning-surface p-3 rounded text-learning-text overflow-x-auto text-xs font-mono border border-learning-muted/10">
+{executionResult.results.stdout}</pre>
+                    </div>
+                  )}
+                  {executionResult.results.stderr && (
+                    <div>
+                      <div className="text-xs text-red-400 mb-1">⚠️ Ошибки (stderr):</div>
+                      <pre className="bg-red-500/5 p-3 rounded text-red-400 overflow-x-auto text-xs font-mono border border-red-500/20">
+{executionResult.results.stderr}</pre>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-xs text-learning-muted italic">
+                  Нет вывода в консоль
+                </div>
+              )}
+            </div>
+
+            {/* Test Results Section */}
+            {executionResult.testResults && executionResult.testResults.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-learning-text mb-2">
+                  Результаты тестов
+                </h3>
+                <div className="space-y-2">
+                  {executionResult.testResults.map((testResult, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3 rounded ${
+                        testResult.passed
+                          ? 'bg-green-500/5 border border-green-500/10'
+                          : 'bg-red-500/5 border border-red-500/10'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <span className={`font-medium text-sm ${
+                          testResult.passed ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {testResult.passed ? '✓' : '✗'} Тест {idx + 1}
+                        </span>
+                      </div>
+
+                      {!testResult.passed && (
+                        <div className="text-xs space-y-2">
                           <div>
-                            <div className="text-learning-muted mb-1">Ошибка:</div>
-                            <pre className="bg-learning-bg p-2 rounded text-red-400">
-                              {testResult.error}
+                            <div className="text-learning-muted mb-1">Ожидалось:</div>
+                            <pre className="bg-learning-bg p-2 rounded text-green-400">
+                              {testResult.expectedOutput}
                             </pre>
                           </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {(executionResult.results.stdout || executionResult.results.stderr) && (
-              <div className="space-y-2 mt-3 text-xs">
-                {executionResult.results.stdout && (
-                  <div>
-                    <div className="text-learning-muted mb-1">Вывод:</div>
-                    <pre className="bg-learning-bg p-2 rounded text-learning-text overflow-x-auto">
-                      {executionResult.results.stdout}
-                    </pre>
-                  </div>
-                )}
-                {executionResult.results.stderr && (
-                  <div>
-                    <div className="text-learning-muted mb-1">Ошибки:</div>
-                    <pre className="bg-learning-bg p-2 rounded text-red-400 overflow-x-auto">
-                      {executionResult.results.stderr}
-                    </pre>
-                  </div>
-                )}
+                          <div>
+                            <div className="text-learning-muted mb-1">Получено:</div>
+                            <pre className="bg-learning-bg p-2 rounded text-red-400">
+                              {testResult.actualOutput || '(пусто)'}
+                            </pre>
+                          </div>
+                          {testResult.error && (
+                            <div>
+                              <div className="text-learning-muted mb-1">Ошибка:</div>
+                              <pre className="bg-learning-bg p-2 rounded text-red-400">
+                                {testResult.error}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
