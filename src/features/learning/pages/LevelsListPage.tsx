@@ -2,11 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Spinner } from '@/shared/components/ui';
 import { getLevels } from '../api/levelsApi';
-import { useAuthStore } from '@/features/auth/store/authStore';
 import type { Level } from '@/shared/types';
 
 export function LevelsListPage() {
-  const { profile } = useAuthStore();
   const [levels, setLevels] = useState<Level[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,8 +17,8 @@ export function LevelsListPage() {
     try {
       setLoading(true);
       setError(null);
-      // Pass student's class to filter levels
-      const data = await getLevels(profile?.class);
+      // RLS policies automatically filter levels based on user's role and class
+      const data = await getLevels();
       setLevels(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка загрузки уровней');

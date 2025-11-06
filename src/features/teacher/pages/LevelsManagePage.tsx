@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getLevelsWithStats, deleteLevel } from '@/features/learning/api/levelsApi';
 import { Button, Spinner } from '@/shared/components/ui';
+import { AILevelGeneratorModal } from '../components/AILevelGeneratorModal';
 import type { Level } from '@/shared/types';
 
 export function LevelsManagePage() {
@@ -10,6 +11,7 @@ export function LevelsManagePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showAIGenerator, setShowAIGenerator] = useState(false);
 
   useEffect(() => {
     loadLevels();
@@ -99,13 +101,31 @@ export function LevelsManagePage() {
             Создавайте и редактируйте учебные задания
           </p>
         </div>
-        <Button
-          variant="primary"
-          onClick={() => navigate('/teacher/levels/new')}
-        >
-          + Создать уровень
-        </Button>
+        <div className="flex gap-3">
+          <Button
+            variant="secondary"
+            onClick={() => setShowAIGenerator(true)}
+          >
+            🤖 AI Генератор
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => navigate('/teacher/levels/new')}
+          >
+            + Создать вручную
+          </Button>
+        </div>
       </div>
+
+      {/* AI Generator Modal */}
+      <AILevelGeneratorModal
+        isOpen={showAIGenerator}
+        onClose={() => setShowAIGenerator(false)}
+        onLevelsCreated={() => {
+          loadLevels();
+          setShowAIGenerator(false);
+        }}
+      />
 
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

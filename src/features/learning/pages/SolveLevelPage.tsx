@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Spinner, CodeEditor } from '@/shared/components/ui';
-import { getLevelById } from '../api/levelsApi';
+import { getLevelById, getNextLevel } from '../api/levelsApi';
 import { createSubmission, getLatestSubmission } from '../api/submissionsApi';
 import { executeCode, runTests } from '@/shared/api/codeExecutionApi';
 import { getAIFeedback } from '@/shared/api/aiFeedbackApi';
@@ -10,8 +10,10 @@ import type { Level, ExecutionResponse, AIFeedbackResponse } from '@/shared/type
 
 export function SolveLevelPage() {
   const { levelId } = useParams<{ levelId: string }>();
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const [level, setLevel] = useState<Level | null>(null);
+  const [nextLevel, setNextLevel] = useState<Level | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [code, setCode] = useState('');
@@ -22,10 +24,23 @@ export function SolveLevelPage() {
   const [aiFeedback, setAiFeedback] = useState<AIFeedbackResponse | null>(null);
   const [loadingAI, setLoadingAI] = useState(false);
 
+  // Reset state when levelId changes
   useEffect(() => {
+    // Clear previous level's state
+    setExecutionResult(null);
+    setAiFeedback(null);
+    setCode('');
+    setRunning(false);
+    setLoadingAI(false);
+    setSaving(false);
+    setSaveStatus('idle');
+    setError(null);
+
+    // Load new level data
     if (levelId && user) {
       loadLevel(levelId);
       loadLastSubmission(levelId, user.id);
+      loadNextLevelInfo(levelId);
     }
   }, [levelId, user]);
 
@@ -47,6 +62,16 @@ export function SolveLevelPage() {
     }
   };
 
+  const loadNextLevelInfo = async (id: string) => {
+    try {
+      const next = await getNextLevel(id);
+      setNextLevel(next);
+    } catch (err) {
+      console.log('No next level found or error loading:', err);
+      setNextLevel(null);
+    }
+  };
+
   const loadLastSubmission = async (lid: string, uid: string) => {
     try {
       const lastSubmission = await getLatestSubmission(uid, lid);
@@ -54,7 +79,6 @@ export function SolveLevelPage() {
         setCode(lastSubmission.code);
       }
     } catch (err) {
-      // Ignore error - just means no previous submission
       console.log('No previous submission found');
     }
   };
@@ -116,9 +140,7 @@ export function SolveLevelPage() {
       setRunning(true);
       setExecutionResult(null);
 
-      // Если есть тестовые случаи, запустить с тестами
       if (level.test_cases && level.test_cases.length > 0) {
-        // Преобразовать test_cases из базы данных в формат execution API
         const testCases = level.test_cases.map(tc => ({
           input: tc.input,
           expected_output: tc.output
@@ -132,7 +154,6 @@ export function SolveLevelPage() {
 
         setExecutionResult(result);
 
-        // Автоматически сохранить результат
         if (levelId && user) {
           await createSubmission({
             user_id: user.id,
@@ -142,14 +163,12 @@ export function SolveLevelPage() {
           });
         }
 
-        // Если тесты не прошли, получить AI feedback
         if (!result.allTestsPassed) {
           handleGetAIFeedback(result);
         } else {
-          setAiFeedback(null); // Очистить предыдущий feedback при успехе
+          setAiFeedback(null);
         }
       } else {
-        // Если нет тестовых случаев, просто выполнить код
         const result = await executeCode({
           language: level.language,
           code: code.trim()
@@ -170,6 +189,12 @@ export function SolveLevelPage() {
       });
     } finally {
       setRunning(false);
+    }
+  };
+
+  const handleGoToNextLevel = () => {
+    if (nextLevel) {
+      navigate(`/student/levels/${nextLevel.id}/solve`);
     }
   };
 
@@ -232,280 +257,285 @@ export function SolveLevelPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold text-learning-text">
-              {level.title}
-            </h1>
-            <span className={`text-xs px-2 py-1 rounded-full border ${getDifficultyColor(level.difficulty)}`}>
-              {getDifficultyLabel(level.difficulty)}
-            </span>
+    <div className="flex gap-6 h-[calc(100vh-120px)]">
+      {/* Main Content - Left Side (2/3) */}
+      <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2">
+        {/* Header */}
+        <div className="flex items-start justify-between sticky top-0 bg-learning-bg pb-2 z-10">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-2xl font-bold text-learning-text">
+                {level.title}
+              </h1>
+              <span className={`text-xs px-2 py-1 rounded-full border ${getDifficultyColor(level.difficulty)}`}>
+                {getDifficultyLabel(level.difficulty)}
+              </span>
+            </div>
+            {level.topic && (
+              <p className="text-sm text-learning-muted">
+                {level.topic}
+              </p>
+            )}
           </div>
-          {level.topic && (
-            <p className="text-sm text-learning-muted">
-              {level.topic}
-            </p>
+          <Link
+            to="/student/levels"
+            className="text-sm text-learning-accent hover:underline"
+          >
+            ← Все уровни
+          </Link>
+        </div>
+
+        {/* Description */}
+        <div className="bg-learning-surface border border-learning-muted/10 rounded-lg p-4">
+          <h2 className="text-base font-semibold text-learning-text mb-2">
+            📝 Описание задачи
+          </h2>
+          <p className="text-learning-text whitespace-pre-wrap text-sm">
+            {level.description}
+          </p>
+
+          {level.target_skills && level.target_skills.length > 0 && (
+            <div className="mt-3">
+              <h3 className="text-xs font-medium text-learning-muted mb-2">
+                Навыки:
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {level.target_skills.map((skill, idx) => (
+                  <span
+                    key={idx}
+                    className="text-xs px-2 py-1 bg-learning-accent/10 text-learning-accent rounded"
+                  >
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
           )}
         </div>
-        <Link
-          to="/student/levels"
-          className="text-sm text-learning-accent hover:underline"
-        >
-          Назад к уровням
-        </Link>
-      </div>
 
-      {/* Description */}
-      <div className="bg-learning-surface border border-learning-muted/10 rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-learning-text mb-3">
-          Описание задачи
-        </h2>
-        <p className="text-learning-text whitespace-pre-wrap">
-          {level.description}
-        </p>
+        {/* Code Editor */}
+        <div className="bg-learning-surface border border-learning-muted/10 rounded-lg p-4 flex-1">
+          <h2 className="text-base font-semibold text-learning-text mb-2">
+            💻 Твое решение
+          </h2>
+          <CodeEditor
+            value={code}
+            onChange={setCode}
+            language={level.language}
+            height="400px"
+          />
+        </div>
 
-        {/* Target Skills */}
-        {level.target_skills && level.target_skills.length > 0 && (
-          <div className="mt-4">
-            <h3 className="text-sm font-medium text-learning-muted mb-2">
-              Навыки:
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {level.target_skills.map((skill, idx) => (
-                <span
-                  key={idx}
-                  className="text-xs px-2 py-1 bg-learning-accent/10 text-learning-accent rounded"
-                >
-                  {skill}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Code Editor */}
-      <div className="bg-learning-surface border border-learning-muted/10 rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-learning-text mb-3">
-          Ваше решение
-        </h2>
-        <CodeEditor
-          value={code}
-          onChange={setCode}
-          language={level.language}
-          height="500px"
-        />
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        {/* Actions */}
+        <div className="flex items-center gap-3 sticky bottom-0 bg-learning-bg pt-2">
           <button
             onClick={handleRunCode}
             disabled={running || !code.trim()}
-            className="px-6 py-3 bg-learning-accent text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className="flex-1 px-6 py-3 bg-learning-accent text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-center"
           >
-            {running ? 'Выполнение...' : 'Запустить код'}
+            {running ? '⏳ Выполнение...' : '▶️ Запустить код'}
           </button>
           <button
             onClick={handleSaveCode}
             disabled={saving || !code.trim()}
             className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
-            {saving ? 'Сохранение...' : 'Сохранить'}
+            {saving ? '💾 Сохранение...' : '💾 Сохранить'}
           </button>
+          {saveStatus === 'saved' && (
+            <div className="text-sm text-green-400">✓</div>
+          )}
         </div>
-        {saveStatus === 'saved' && (
-          <div className="text-sm text-green-400">
-            ✓ Код сохранен
-          </div>
-        )}
-        {saveStatus === 'error' && (
-          <div className="text-sm text-red-400">
-            ✗ Ошибка сохранения
+
+        {/* Execution Results */}
+        {executionResult && (
+          <div className="bg-learning-surface border border-learning-muted/10 rounded-lg p-4">
+            <h2 className="text-base font-semibold text-learning-text mb-3">
+              📊 Результаты выполнения
+            </h2>
+
+            {executionResult.testResults && executionResult.testResults.length > 0 && (
+              <div className="space-y-2">
+                {executionResult.testResults.map((testResult, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded ${
+                      testResult.passed
+                        ? 'bg-green-500/5 border border-green-500/10'
+                        : 'bg-red-500/5 border border-red-500/10'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <span className={`font-medium text-sm ${
+                        testResult.passed ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {testResult.passed ? '✓' : '✗'} Тест {idx + 1}
+                      </span>
+                    </div>
+
+                    {!testResult.passed && (
+                      <div className="text-xs space-y-2">
+                        <div>
+                          <div className="text-learning-muted mb-1">Ожидалось:</div>
+                          <pre className="bg-learning-bg p-2 rounded text-green-400">
+                            {testResult.expectedOutput}
+                          </pre>
+                        </div>
+                        <div>
+                          <div className="text-learning-muted mb-1">Получено:</div>
+                          <pre className="bg-learning-bg p-2 rounded text-red-400">
+                            {testResult.actualOutput || '(пусто)'}
+                          </pre>
+                        </div>
+                        {testResult.error && (
+                          <div>
+                            <div className="text-learning-muted mb-1">Ошибка:</div>
+                            <pre className="bg-learning-bg p-2 rounded text-red-400">
+                              {testResult.error}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(executionResult.results.stdout || executionResult.results.stderr) && (
+              <div className="space-y-2 mt-3 text-xs">
+                {executionResult.results.stdout && (
+                  <div>
+                    <div className="text-learning-muted mb-1">Вывод:</div>
+                    <pre className="bg-learning-bg p-2 rounded text-learning-text overflow-x-auto">
+                      {executionResult.results.stdout}
+                    </pre>
+                  </div>
+                )}
+                {executionResult.results.stderr && (
+                  <div>
+                    <div className="text-learning-muted mb-1">Ошибки:</div>
+                    <pre className="bg-learning-bg p-2 rounded text-red-400 overflow-x-auto">
+                      {executionResult.results.stderr}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Execution Results */}
-      {executionResult && (
-        <div className="bg-learning-surface border border-learning-muted/10 rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-learning-text mb-4">
-            Результаты выполнения
-          </h2>
-
-          {/* Test Results Summary */}
-          {executionResult.testResults && executionResult.testResults.length > 0 && (
-            <div className="mb-4">
-              <div className={`p-4 rounded-lg ${
-                executionResult.allTestsPassed
-                  ? 'bg-green-500/10 border border-green-500/20'
-                  : 'bg-red-500/10 border border-red-500/20'
-              }`}>
-                <div className="flex items-center justify-between mb-3">
-                  <span className={`text-lg font-semibold ${
-                    executionResult.allTestsPassed ? 'text-green-400' : 'text-red-400'
-                  }`}>
-                    {executionResult.allTestsPassed ? '✓ Все тесты прошли!' : '✗ Некоторые тесты не прошли'}
-                  </span>
-                  <span className="text-sm text-learning-muted">
-                    {executionResult.testResults.filter(t => t.passed).length} / {executionResult.testResults.length}
-                  </span>
-                </div>
-
-                {/* Individual Test Results */}
-                <div className="space-y-2">
-                  {executionResult.testResults.map((testResult, idx) => (
-                    <div
-                      key={idx}
-                      className={`p-3 rounded ${
-                        testResult.passed
-                          ? 'bg-green-500/5 border border-green-500/10'
-                          : 'bg-red-500/5 border border-red-500/10'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <span className={`font-medium ${
-                          testResult.passed ? 'text-green-400' : 'text-red-400'
-                        }`}>
-                          {testResult.passed ? '✓' : '✗'} Тест {idx + 1}
-                        </span>
-                      </div>
-
-                      {testResult.testCase.description && (
-                        <div className="text-sm text-learning-muted mb-2">
-                          {testResult.testCase.description}
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div>
-                          <div className="text-learning-muted mb-1">Входные данные:</div>
-                          <pre className="bg-learning-bg p-2 rounded text-learning-text overflow-x-auto">
-                            {testResult.testCase.input || '(пусто)'}
-                          </pre>
-                        </div>
-                        <div>
-                          <div className="text-learning-muted mb-1">Ожидаемый вывод:</div>
-                          <pre className="bg-learning-bg p-2 rounded text-green-400 overflow-x-auto">
-                            {testResult.expectedOutput}
-                          </pre>
-                        </div>
-                      </div>
-
-                      {!testResult.passed && (
-                        <div className="mt-2">
-                          <div className="text-learning-muted mb-1 text-sm">Ваш вывод:</div>
-                          <pre className="bg-learning-bg p-2 rounded text-red-400 overflow-x-auto text-sm">
-                            {testResult.actualOutput || '(пусто)'}
-                          </pre>
-                          {testResult.error && (
-                            <div className="mt-2">
-                              <div className="text-learning-muted mb-1 text-sm">Ошибка:</div>
-                              <pre className="bg-learning-bg p-2 rounded text-red-400 overflow-x-auto text-sm">
-                                {testResult.error}
-                              </pre>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Standard Output/Error */}
-          {(executionResult.results.stdout || executionResult.results.stderr) && (
-            <div className="space-y-3">
-              {executionResult.results.stdout && (
-                <div>
-                  <div className="text-sm text-learning-muted mb-2">Вывод (stdout):</div>
-                  <pre className="bg-learning-bg p-3 rounded text-learning-text overflow-x-auto text-sm">
-                    {executionResult.results.stdout}
-                  </pre>
-                </div>
-              )}
-
-              {executionResult.results.stderr && (
-                <div>
-                  <div className="text-sm text-learning-muted mb-2">Ошибки (stderr):</div>
-                  <pre className="bg-learning-bg p-3 rounded text-red-400 overflow-x-auto text-sm">
-                    {executionResult.results.stderr}
-                  </pre>
-                </div>
-              )}
-
-              <div className="text-xs text-learning-muted">
-                Код завершения: {executionResult.results.exitCode}
-              </div>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {executionResult.error && !executionResult.results.stdout && !executionResult.results.stderr && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded p-4">
-              <div className="text-red-400 font-medium mb-2">Ошибка выполнения</div>
-              <div className="text-sm text-learning-text">{executionResult.error}</div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* AI Feedback Section */}
-      {loadingAI && (
-        <div className="bg-learning-surface border border-learning-accent/20 rounded-lg p-6">
-          <div className="flex items-center gap-3">
-            <Spinner size="sm" />
-            <span className="text-learning-accent">AI анализирует твой код...</span>
+      {/* Sidebar - Right Side (1/3) */}
+      <div className="w-96 flex flex-col gap-4">
+        {/* Success Message with Next Button */}
+        {executionResult?.allTestsPassed && (
+          <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 border-2 border-green-500/30 rounded-lg p-6 text-center">
+            <div className="text-5xl mb-3">🎉</div>
+            <h2 className="text-xl font-bold text-green-400 mb-2">
+              Отлично!
+            </h2>
+            <p className="text-learning-text mb-4">
+              Все тесты пройдены! Ты молодец!
+            </p>
+            {nextLevel ? (
+              <button
+                onClick={handleGoToNextLevel}
+                className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+              >
+                Следующее задание →
+              </button>
+            ) : (
+              <Link
+                to="/student/levels"
+                className="block w-full px-6 py-3 bg-learning-accent text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+              >
+                Все уровни
+              </Link>
+            )}
           </div>
-        </div>
-      )}
+        )}
 
-      {aiFeedback && !loadingAI && (
-        <div className="bg-learning-surface border border-learning-accent/20 rounded-lg p-6">
-          <div className="flex items-start gap-3 mb-4">
-            <div className="text-2xl">🤖</div>
-            <div className="flex-1">
-              <h2 className="text-lg font-semibold text-learning-accent mb-2">
+        {/* AI Helper Section */}
+        <div className="bg-gradient-to-br from-learning-accent/5 to-purple-500/5 border border-learning-accent/20 rounded-lg p-4 flex-1">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="text-3xl">🤖</div>
+            <div>
+              <h2 className="text-base font-bold text-learning-accent">
                 AI Наставник
               </h2>
-              <p className="text-learning-text">
-                {aiFeedback.feedback}
+              <p className="text-xs text-learning-muted">
+                Твой помощник
               </p>
             </div>
           </div>
 
-          {aiFeedback.suggestions && aiFeedback.suggestions.length > 0 && (
-            <div className="mt-4 space-y-2">
-              <h3 className="text-sm font-medium text-learning-muted mb-2">
-                💡 Подсказки:
-              </h3>
-              <ul className="space-y-2">
-                {aiFeedback.suggestions.map((suggestion, idx) => (
-                  <li
-                    key={idx}
-                    className="flex items-start gap-2 text-sm text-learning-text bg-learning-bg p-3 rounded"
-                  >
-                    <span className="text-learning-accent font-medium">{idx + 1}.</span>
-                    <span>{suggestion}</span>
-                  </li>
-                ))}
-              </ul>
+          {loadingAI && (
+            <div className="flex items-center gap-2 text-sm">
+              <Spinner size="sm" />
+              <span className="text-learning-accent">Анализирую...</span>
             </div>
           )}
 
-          {!aiFeedback.success && aiFeedback.error && (
-            <div className="mt-3 text-xs text-learning-muted">
-              Примечание: AI сервис временно недоступен, показаны базовые подсказки
+          {aiFeedback && !loadingAI && (
+            <div className="space-y-3">
+              <div className="text-sm text-learning-text bg-learning-surface/50 p-3 rounded">
+                {aiFeedback.feedback}
+              </div>
+
+              {aiFeedback.suggestions && aiFeedback.suggestions.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-learning-muted mb-2">
+                    💡 Подсказки:
+                  </h3>
+                  <ul className="space-y-2">
+                    {aiFeedback.suggestions.map((suggestion, idx) => (
+                      <li
+                        key={idx}
+                        className="flex gap-2 text-sm text-learning-text bg-learning-surface/50 p-2 rounded"
+                      >
+                        <span className="text-learning-accent font-bold shrink-0">{idx + 1}.</span>
+                        <span className="text-xs">{suggestion}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!aiFeedback && !loadingAI && !executionResult?.allTestsPassed && (
+            <div className="text-sm text-learning-muted text-center py-6">
+              Запусти код, и я помогу тебе, если что-то пойдет не так! 😊
+            </div>
+          )}
+
+          {executionResult?.allTestsPassed && (
+            <div className="text-sm text-green-400 text-center py-6">
+              Отличная работа! Задание выполнено! 🌟
             </div>
           )}
         </div>
-      )}
+
+        {/* Hints Section */}
+        {level.hints && level.hints.length > 0 && (
+          <div className="bg-learning-surface border border-learning-muted/10 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-learning-text mb-2">
+              💭 Подсказки к заданию
+            </h3>
+            <ul className="space-y-2">
+              {level.hints.map((hint, idx) => (
+                <li
+                  key={idx}
+                  className="text-xs text-learning-muted bg-learning-bg p-2 rounded"
+                >
+                  <span className="text-learning-accent font-bold">{idx + 1}.</span> {hint}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -151,7 +151,7 @@ export async function getStrugglingStudents(): Promise<
 
   // 4. Calculate stats and identify struggling students
   const studentsWithStats = students.map(student => {
-    const studentProgress = progress?.filter(p => p.user_id === student.id) || [];
+    const studentProgress = progress?.filter(p => p.student_id === student.id) || [];
     const completedLevels = studentProgress.filter(p => p.status === 'completed').length;
 
     const studentSubmissions = submissions?.filter(s => s.user_id === student.id) || [];
@@ -237,15 +237,15 @@ export async function getProgressOverTime(days: number = 30): Promise<
 
   const { data: progress } = await supabase
     .from('level_progress')
-    .select('created_at, status')
+    .select('completed_at, status')
     .eq('status', 'completed')
-    .gte('created_at', startDate.toISOString());
+    .gte('completed_at', startDate.toISOString());
 
   if (!progress) return [];
 
   // Aggregate by day
   const activityByDay = aggregateActivityByDay(
-    progress.map(p => ({ submitted_at: p.created_at }))
+    progress.map(p => ({ submitted_at: p.completed_at }))
   );
 
   // Fill missing days
@@ -281,7 +281,7 @@ export async function getStudentsDistribution(): Promise<{
 
   // Calculate completed levels for each student
   const studentsWithProgress = students.map(student => {
-    const studentProgress = progress?.filter(p => p.user_id === student.id) || [];
+    const studentProgress = progress?.filter(p => p.student_id === student.id) || [];
     const completedLevels = studentProgress.filter(p => p.status === 'completed').length;
 
     return {
@@ -375,7 +375,7 @@ export async function getStudentLevelProgress(
   const { data: progress } = await supabase
     .from('level_progress')
     .select('*')
-    .eq('user_id', studentId);
+    .eq('student_id', studentId);
 
   // Get student's submissions
   const { data: submissions } = await supabase
@@ -742,7 +742,7 @@ export async function getClassStatistics(className: string): Promise<{
 
   // Calculate stats for each student
   const studentsWithStats = students.map(student => {
-    const studentProgress = progress?.filter(p => p.user_id === student.id) || [];
+    const studentProgress = progress?.filter(p => p.student_id === student.id) || [];
     const completedLevels = studentProgress.filter(p => p.status === 'completed').length;
 
     const studentSubmissions = submissions?.filter(s => s.user_id === student.id) || [];
@@ -834,16 +834,16 @@ export async function getClassProgressOverTime(
   // Get progress completions for these students
   const { data: progress } = await supabase
     .from('level_progress')
-    .select('created_at')
-    .in('user_id', students.map(s => s.id))
+    .select('completed_at')
+    .in('student_id', students.map(s => s.id))
     .eq('status', 'completed')
-    .gte('created_at', startDate.toISOString());
+    .gte('completed_at', startDate.toISOString());
 
   if (!progress) return [];
 
   // Aggregate by day
   const activityByDay = aggregateActivityByDay(
-    progress.map(p => ({ submitted_at: p.created_at }))
+    progress.map(p => ({ submitted_at: p.completed_at }))
   );
 
   // Fill missing days
