@@ -77,7 +77,7 @@ export interface CreateLevelData {
   reference_solution: string;
   test_cases: { input: string; output: string; description?: string }[];
   hints?: string[];
-  difficulty: 'easy' | 'medium' | 'hard';
+  difficulty: number; // 1-10 scale
   order_index: number;
   topic?: string;
   language: string;
