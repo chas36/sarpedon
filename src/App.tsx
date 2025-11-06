@@ -15,6 +15,8 @@ import { LevelAnalyticsPage } from './features/teacher/pages/LevelAnalyticsPage'
 import { ClassAnalyticsPage } from './features/teacher/pages/ClassAnalyticsPage';
 import { TakeEntranceTestPage } from './features/entrance-test/pages/TakeEntranceTestPage';
 import { EntranceTestResultsPage } from './features/entrance-test/pages/EntranceTestResultsPage';
+import { EntranceTestManagePage } from './features/entrance-test/pages/EntranceTestManagePage';
+import { EntranceTestEditorPage } from './features/entrance-test/pages/EntranceTestEditorPage';
 import { useAuthStore } from './features/auth/store/authStore';
 import { getCurrentUser, getProfile } from './features/auth/api/authApi';
 import { Spinner } from './shared/components/ui';
@@ -124,7 +126,9 @@ function App() {
                   <Route path="levels/:id" element={<LevelEditorPage />} />
                   <Route path="levels/:id/analytics" element={<LevelAnalyticsPage />} />
                   <Route path="classes/:name" element={<ClassAnalyticsPage />} />
-                  <Route path="entrance-tests" element={<EntranceTestResultsPage />} />
+                  <Route path="entrance-tests" element={<EntranceTestManagePage />} />
+                  <Route path="entrance-tests/results" element={<EntranceTestResultsPage />} />
+                  <Route path="entrance-tests/:testId/edit" element={<EntranceTestEditorPage />} />
                   <Route path="competitions" element={<div>Соревнования - в разработке</div>} />
                   <Route path="statistics" element={<StatisticsPage />} />
                 </Routes>
