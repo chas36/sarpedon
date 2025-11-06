@@ -6,6 +6,7 @@ import { getSubmissionsByUser } from '../api/submissionsApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import type { Level, Submission } from '@/shared/types';
 import { getDifficultyLabel, getDifficultyBadgeClass } from '@/features/teacher/utils/difficultyUtils';
+import { EntranceTestPrompt } from '@/features/entrance-test/components/EntranceTestPrompt';
 
 // Extended level with progress info
 interface LevelWithProgress extends Level {
@@ -189,6 +190,9 @@ export function LevelsListPage() {
 
   return (
     <div className="space-y-8">
+      {/* Entrance Test Prompt */}
+      <EntranceTestPrompt />
+
       {/* Header with Progress */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
