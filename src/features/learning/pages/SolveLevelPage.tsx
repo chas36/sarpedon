@@ -108,23 +108,40 @@ export function SolveLevelPage() {
 
   const loadStudentProfile = async (uid: string) => {
     try {
-      const { data, error } = await supabase
+      // Load proficiency data
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('proficiency_level, proficiency_score')
         .eq('id', uid)
         .single();
 
-      if (error) {
-        console.error('Failed to load student profile:', error);
+      if (profileError) {
+        console.error('Failed to load student profile:', profileError);
         return;
       }
 
-      if (data) {
+      // Load weak areas from skill tracking system
+      const { data: weakAreasData, error: weakAreasError } = await supabase
+        .rpc('get_student_weak_areas', {
+          p_user_id: uid,
+          p_limit: 3
+        });
+
+      if (weakAreasError) {
+        console.error('Failed to load weak areas:', weakAreasError);
+      }
+
+      if (profileData) {
+        const weakAreas = (weakAreasData || []).map((wa: any) => wa.skill_name);
+        const commonMistakes = (weakAreasData || [])
+          .filter((wa: any) => wa.mistake_count > 2)
+          .map((wa: any) => wa.skill_name);
+
         setStudentProfile({
-          proficiency_level: data.proficiency_level || 'beginner',
-          proficiency_score: data.proficiency_score || 0,
-          weak_areas: [], // TODO: Load from proficiency_history or user_skill_profile
-          common_mistakes: []
+          proficiency_level: profileData.proficiency_level || 'beginner',
+          proficiency_score: profileData.proficiency_score || 0,
+          weak_areas: weakAreas,
+          common_mistakes: commonMistakes
         });
       }
     } catch (err) {

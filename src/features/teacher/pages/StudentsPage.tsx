@@ -7,6 +7,32 @@ import { BulkImportStudentsModal } from '../components/BulkImportStudentsModal';
 import { ManageClassesModal } from '../components/ManageClassesModal';
 import type { Profile } from '@/shared/types';
 
+const getProficiencyBadgeColor = (level?: string) => {
+  switch (level) {
+    case 'advanced':
+      return 'bg-green-500/20 text-green-500';
+    case 'intermediate':
+      return 'bg-blue-500/20 text-blue-500';
+    case 'beginner':
+      return 'bg-yellow-500/20 text-yellow-500';
+    default:
+      return 'bg-admin-muted/20 text-admin-muted';
+  }
+};
+
+const getProficiencyLabel = (level?: string) => {
+  switch (level) {
+    case 'advanced':
+      return 'Продвинутый';
+    case 'intermediate':
+      return 'Средний';
+    case 'beginner':
+      return 'Начинающий';
+    default:
+      return 'Не определен';
+  }
+};
+
 export function StudentsPage() {
   const navigate = useNavigate();
   const [students, setStudents] = useState<Profile[]>([]);
@@ -135,6 +161,7 @@ export function StudentsPage() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-admin-muted uppercase">Имя</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-admin-muted uppercase">Класс</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-admin-muted uppercase">Уровень владения</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-admin-muted uppercase">Логин</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-admin-muted uppercase">Действия</th>
               </tr>
@@ -151,6 +178,18 @@ export function StudentsPage() {
                     <span className="px-2 py-1 text-xs font-medium rounded bg-admin-accent/20 text-admin-accent">
                       {student.class || 'Не указан'}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-1 text-xs font-medium rounded ${getProficiencyBadgeColor(student.proficiency_level)}`}>
+                        {getProficiencyLabel(student.proficiency_level)}
+                      </span>
+                      {student.proficiency_score !== undefined && (
+                        <span className="text-xs text-admin-muted">
+                          ({student.proficiency_score}/100)
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-admin-muted">
                     {student.generated_login || student.id.slice(0, 8)}
