@@ -18,15 +18,23 @@ import type { AIFeedbackRequest, AIFeedbackResponse } from '@/shared/types';
 const USE_AI = true;
 const GROQ_MODEL = 'llama-3.1-8b-instant'; // Быстрая модель для бесплатного tier
 
+// Низкая temperature для более консистентных ответов
+const AI_TEMPERATURE = 0.3;
+
 /**
- * Создать промпт для анализа кода
+ * Создать улучшенный промпт для детального анализа кода
  */
 function createFeedbackPrompt(request: AIFeedbackRequest): string {
-  let prompt = `Ты - AI наставник по программированию для образовательной платформы. Твоя задача - помочь студенту улучшить свой код.
+  const difficultyLevel = request.difficulty || 5;
+  const isBeginnerLevel = difficultyLevel <= 3;
+
+  let prompt = `Ты - AI наставник по программированию для образовательной платформы.
+
+КРИТИЧЕСКИ ВАЖНО: Твои оценки должны быть КОНСИСТЕНТНЫМИ - один и тот же код всегда должен получать ОДИНАКОВУЮ оценку. Используй детерминированные критерии.
 
 Задание: ${request.task_description}
-
 Язык программирования: ${request.language}
+Уровень сложности: ${difficultyLevel}/10 ${isBeginnerLevel ? '(начинающий уровень)' : ''}
 
 Код студента:
 \`\`\`${request.language}
@@ -34,76 +42,137 @@ ${request.code}
 \`\`\`
 `;
 
-  // Добавить результаты тестов, если есть
+  // Добавить результаты тестов
   if (request.test_results && request.test_results.length > 0) {
-    prompt += '\nРезультаты тестов:\n';
+    const passedTests = request.test_results.filter(t => t.actual_output === t.expected_output).length;
+    const totalTests = request.test_results.length;
+
+    prompt += `\n📊 Результаты тестирования: ${passedTests}/${totalTests} тестов пройдено\n`;
+
     request.test_results.forEach((test, idx) => {
-      prompt += `\nТест ${idx + 1}:
-Входные данные: ${test.input || '(пусто)'}
-Ожидаемый вывод: ${test.expected_output}
-Фактический вывод: ${test.actual_output}
-`;
+      const status = test.actual_output === test.expected_output ? '✅ PASS' : '❌ FAIL';
+      prompt += `\n${status} | Тест ${idx + 1}:`;
+      prompt += `\n  Вход: ${test.input || '(нет входных данных)'}`;
+      prompt += `\n  Ожидалось: "${test.expected_output}"`;
+      prompt += `\n  Получено: "${test.actual_output}"`;
       if (test.error) {
-        prompt += `Ошибка: ${test.error}\n`;
+        prompt += `\n  Ошибка: ${test.error}`;
       }
     });
+    prompt += '\n';
   }
 
-  // Добавить подсказки, если есть
-  if (request.hints && request.hints.length > 0) {
-    prompt += '\nПодсказки к заданию:\n';
-    request.hints.forEach((hint, idx) => {
-      prompt += `${idx + 1}. ${hint}\n`;
-    });
-  }
+  prompt += `\n📋 ЗАДАЧА АНАЛИЗА:
 
-  prompt += `\nПроанализируй код студента и предоставь:
-1. Краткую обратную связь (2-3 предложения) о том, что не так
-2. Конкретные подсказки (не более 3-х) как исправить проблему, НЕ давая готовое решение
+Оцени код строго по критериям (0-100 баллов каждый):
 
-Отвечай на русском языке. Будь конструктивным и поддерживающим.
+1. READABILITY (читаемость):
+   - Понятные имена переменных/функций
+   - Правильное форматирование
+   - Комментарии там где нужно
 
-Формат ответа:
-ОБРАТНАЯ СВЯЗЬ: <твой анализ>
+2. CORRECTNESS (корректность):
+   - Правильная логика для всех тестов
+   - Обработка граничных случаев
+   - Отсутствие логических ошибок
 
-ПОДСКАЗКИ:
-- <подсказка 1>
-- <подсказка 2>
-- <подсказка 3>`;
+3. EFFICIENCY (эффективность):
+   - Оптимальность для уровня ${difficultyLevel}/10
+   - Нет избыточных операций
+
+4. BEST_PRACTICES (лучшие практики):
+   - Соблюдение конвенций ${request.language}
+   - Правильное использование языковых конструкций
+
+OVERALL_SCORE = среднее арифметическое 4-х оценок выше
+
+Дай ${isBeginnerLevel ? 'простые и понятные' : 'детальные'} подсказки:
+- Что конкретно не так (укажи на ошибки в тестах)
+- Как направить мысль студента (НЕ давай готовое решение!)
+- Максимум 3 подсказки, каждая < 100 символов
+
+ФОРМАТ ОТВЕТА (строго JSON):
+\`\`\`json
+{
+  "readability": <0-100>,
+  "correctness": <0-100>,
+  "efficiency": <0-100>,
+  "best_practices": <0-100>,
+  "overall_score": <среднее>,
+  "feedback": "<2-3 предложения о главной проблеме>",
+  "suggestions": [
+    "<подсказка 1>",
+    "<подсказка 2>",
+    "<подсказка 3>"
+  ]
+}
+\`\`\`
+
+Отвечай ТОЛЬКО валидным JSON, без дополнительного текста. Язык: русский.`;
 
   return prompt;
 }
 
 /**
- * Парсить ответ от AI модели
+ * Парсить JSON ответ от AI модели с метриками качества
  */
-function parseAIResponse(text: string): { feedback: string; suggestions: string[] } {
-  const feedbackMatch = text.match(/ОБРАТНАЯ СВЯЗЬ:\s*(.+?)(?=ПОДСКАЗКИ:|$)/s);
-  const suggestionsMatch = text.match(/ПОДСКАЗКИ:\s*(.+)/s);
+function parseAIResponse(text: string): AIFeedbackResponse {
+  try {
+    // Извлечь JSON из markdown блока, если есть
+    let jsonText = text.trim();
+    const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      jsonText = jsonMatch[1].trim();
+    }
 
-  const feedback = feedbackMatch
-    ? feedbackMatch[1].trim()
-    : 'Попробуй еще раз! Обрати внимание на условие задачи.';
+    const parsed = JSON.parse(jsonText);
 
-  const suggestions: string[] = [];
-  if (suggestionsMatch) {
-    const suggestionText = suggestionsMatch[1];
-    const lines = suggestionText.split('\n').filter(line => line.trim().startsWith('-'));
-    lines.forEach(line => {
-      const cleaned = line.replace(/^-\s*/, '').trim();
-      if (cleaned) {
-        suggestions.push(cleaned);
+    // Валидация структуры
+    const readability = Math.max(0, Math.min(100, parsed.readability || 50));
+    const correctness = Math.max(0, Math.min(100, parsed.correctness || 0));
+    const efficiency = Math.max(0, Math.min(100, parsed.efficiency || 50));
+    const best_practices = Math.max(0, Math.min(100, parsed.best_practices || 50));
+
+    const overall_score = Math.round((readability + correctness + efficiency + best_practices) / 4);
+
+    return {
+      success: true,
+      feedback: parsed.feedback || 'Проверь свой код внимательнее!',
+      suggestions: Array.isArray(parsed.suggestions)
+        ? parsed.suggestions.slice(0, 3)
+        : [
+            'Внимательно прочитай условие задачи',
+            'Проверь форматирование вывода',
+            'Проверь логику программы'
+          ],
+      quality_metrics: {
+        overall_score,
+        readability,
+        correctness,
+        efficiency,
+        best_practices
       }
-    });
-  }
+    };
+  } catch (error) {
+    console.error('Failed to parse AI JSON response:', error);
+    console.log('Raw AI response:', text);
 
-  // Если не нашли подсказки, добавить дефолтную
-  if (suggestions.length === 0) {
-    suggestions.push('Внимательно прочитай условие задачи еще раз');
-    suggestions.push('Проверь, совпадает ли твой вывод с ожидаемым форматом');
-  }
+    // Fallback - попробовать извлечь из старого формата
+    const feedbackMatch = text.match(/feedback["']?\s*:\s*["'](.+?)["']/);
+    const feedback = feedbackMatch
+      ? feedbackMatch[1]
+      : 'Попробуй еще раз! Обрати внимание на результаты тестов.';
 
-  return { feedback, suggestions };
+    return {
+      success: true,
+      feedback,
+      suggestions: [
+        'Сравни свой вывод с ожидаемым',
+        'Проверь граничные случаи',
+        'Используй подсказки из задания'
+      ]
+    };
+  }
 }
 
 /**
@@ -176,9 +245,9 @@ export async function getAIFeedback(request: AIFeedbackRequest): Promise<AIFeedb
             content: prompt
           }
         ],
-        temperature: 0.7,
-        max_tokens: 500,
-        top_p: 0.95
+        temperature: AI_TEMPERATURE,  // Низкая temperature для консистентности
+        max_tokens: 800,  // Увеличено для структурированного ответа
+        top_p: 0.9
       }
     });
 
@@ -201,13 +270,8 @@ export async function getAIFeedback(request: AIFeedbackRequest): Promise<AIFeedb
       throw new Error('Нет ответа от AI модели');
     }
 
-    const { feedback, suggestions } = parseAIResponse(generatedText);
-
-    return {
-      success: true,
-      feedback,
-      suggestions
-    };
+    const result = parseAIResponse(generatedText);
+    return result;
 
   } catch (error) {
     console.error('AI Feedback error:', error);

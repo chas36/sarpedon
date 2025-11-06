@@ -70,6 +70,24 @@ export async function getLatestSubmission(
 }
 
 /**
+ * Get all submission versions for a user and level (for code history)
+ */
+export async function getSubmissionHistory(
+  userId: string,
+  levelId: string
+): Promise<Submission[]> {
+  const { data, error } = await supabase
+    .from('submissions')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('level_id', levelId)
+    .order('version', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
  * Update a submission
  */
 export async function updateSubmission(

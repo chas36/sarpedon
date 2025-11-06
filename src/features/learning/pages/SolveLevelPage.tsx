@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Spinner, CodeEditor } from '@/shared/components/ui';
 import { getLevelById, getNextLevel } from '../api/levelsApi';
-import { createSubmission, getLatestSubmission } from '../api/submissionsApi';
+import { createSubmission, getLatestSubmission, getSubmissionHistory } from '../api/submissionsApi';
+import type { Submission } from '@/shared/types';
 import { executeCode, runTests } from '@/shared/api/codeExecutionApi';
 import { getAIFeedback } from '@/shared/api/aiFeedbackApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -23,6 +24,8 @@ export function SolveLevelPage() {
   const [executionResult, setExecutionResult] = useState<ExecutionResponse | null>(null);
   const [aiFeedback, setAiFeedback] = useState<AIFeedbackResponse | null>(null);
   const [loadingAI, setLoadingAI] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<Submission[]>([]);
 
   // Reset state when levelId changes
   useEffect(() => {
@@ -83,6 +86,22 @@ export function SolveLevelPage() {
     }
   };
 
+  const loadHistory = async () => {
+    if (!levelId || !user) return;
+    try {
+      const submissions = await getSubmissionHistory(user.id, levelId);
+      setHistory(submissions);
+      setShowHistory(true);
+    } catch (err) {
+      console.error('Failed to load submission history:', err);
+    }
+  };
+
+  const restoreVersion = (submission: Submission) => {
+    setCode(submission.code);
+    setShowHistory(false);
+  };
+
   const handleSaveCode = async () => {
     if (!levelId || !code.trim() || !user) return;
 
@@ -105,40 +124,13 @@ export function SolveLevelPage() {
     }
   };
 
-  const handleGetAIFeedback = async (executionResult: ExecutionResponse) => {
-    if (!level || !executionResult.testResults) return;
-
-    try {
-      setLoadingAI(true);
-      setAiFeedback(null);
-
-      const feedback = await getAIFeedback({
-        code: code.trim(),
-        language: level.language,
-        task_description: level.description,
-        test_results: executionResult.testResults.map(tr => ({
-          input: tr.testCase.input,
-          expected_output: tr.expectedOutput,
-          actual_output: tr.actualOutput,
-          error: tr.error
-        })),
-        hints: level.hints || []
-      });
-
-      setAiFeedback(feedback);
-    } catch (err) {
-      console.error('Failed to get AI feedback:', err);
-    } finally {
-      setLoadingAI(false);
-    }
-  };
-
   const handleRunCode = async () => {
     if (!level || !code.trim()) return;
 
     try {
       setRunning(true);
       setExecutionResult(null);
+      setLoadingAI(false);
 
       if (level.test_cases && level.test_cases.length > 0) {
         const testCases = level.test_cases.map(tc => ({
@@ -154,19 +146,44 @@ export function SolveLevelPage() {
 
         setExecutionResult(result);
 
+        // Получаем AI feedback если тесты не прошли
+        let aiResponse = null;
+        if (!result.allTestsPassed) {
+          setLoadingAI(true);
+          try {
+            aiResponse = await getAIFeedback({
+              code: code.trim(),
+              language: level.language,
+              task_description: level.description,
+              difficulty: level.difficulty,
+              test_results: result.testResults.map(tr => ({
+                input: tr.testCase.input,
+                expected_output: tr.expectedOutput,
+                actual_output: tr.actualOutput,
+                error: tr.error
+              })),
+              hints: level.hints || []
+            });
+            setAiFeedback(aiResponse);
+          } catch (err) {
+            console.error('Failed to get AI feedback:', err);
+          } finally {
+            setLoadingAI(false);
+          }
+        } else {
+          setAiFeedback(null);
+        }
+
+        // Сохраняем submission с метриками качества
         if (levelId && user) {
           await createSubmission({
             user_id: user.id,
             level_id: levelId,
             code: code.trim(),
-            status: result.allTestsPassed ? 'passed' : 'failed'
+            status: result.allTestsPassed ? 'passed' : 'failed',
+            quality_metrics: aiResponse?.quality_metrics,
+            ai_feedback: aiResponse?.feedback
           });
-        }
-
-        if (!result.allTestsPassed) {
-          handleGetAIFeedback(result);
-        } else {
-          setAiFeedback(null);
         }
       } else {
         const result = await executeCode({
@@ -342,6 +359,13 @@ export function SolveLevelPage() {
           >
             {saving ? '💾 Сохранение...' : '💾 Сохранить'}
           </button>
+          <button
+            onClick={loadHistory}
+            className="px-4 py-3 bg-learning-surface text-learning-text rounded-lg hover:bg-learning-muted/20 transition-colors font-medium"
+            title="Посмотреть историю версий кода"
+          >
+            📜 История
+          </button>
           {saveStatus === 'saved' && (
             <div className="text-sm text-green-400">✓</div>
           )}
@@ -479,6 +503,45 @@ export function SolveLevelPage() {
 
           {aiFeedback && !loadingAI && (
             <div className="space-y-3">
+              {/* Quality Metrics */}
+              {aiFeedback.quality_metrics && (
+                <div className="bg-learning-surface/50 p-3 rounded">
+                  <h3 className="text-xs font-semibold text-learning-muted mb-2">
+                    📊 Оценка кода:
+                  </h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-learning-muted">Общая оценка:</span>
+                      <span className={`text-sm font-bold ${
+                        aiFeedback.quality_metrics.overall_score >= 75 ? 'text-green-400' :
+                        aiFeedback.quality_metrics.overall_score >= 50 ? 'text-yellow-400' :
+                        'text-red-400'
+                      }`}>
+                        {aiFeedback.quality_metrics.overall_score}/100
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <div className="text-learning-muted">Читаемость:</div>
+                        <div className="text-learning-text font-medium">{aiFeedback.quality_metrics.readability}/100</div>
+                      </div>
+                      <div>
+                        <div className="text-learning-muted">Корректность:</div>
+                        <div className="text-learning-text font-medium">{aiFeedback.quality_metrics.correctness}/100</div>
+                      </div>
+                      <div>
+                        <div className="text-learning-muted">Эффективность:</div>
+                        <div className="text-learning-text font-medium">{aiFeedback.quality_metrics.efficiency}/100</div>
+                      </div>
+                      <div>
+                        <div className="text-learning-muted">Лучшие практики:</div>
+                        <div className="text-learning-text font-medium">{aiFeedback.quality_metrics.best_practices}/100</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="text-sm text-learning-text bg-learning-surface/50 p-3 rounded">
                 {aiFeedback.feedback}
               </div>
@@ -536,6 +599,73 @@ export function SolveLevelPage() {
           </div>
         )}
       </div>
+
+      {/* History Modal */}
+      {showHistory && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-learning-surface border border-learning-muted/20 rounded-lg p-6 max-w-3xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-learning-text">📜 История версий кода</h2>
+              <button
+                onClick={() => setShowHistory(false)}
+                className="text-learning-muted hover:text-learning-text transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {history.length === 0 ? (
+              <p className="text-learning-muted text-center py-8">Пока нет сохраненных версий</p>
+            ) : (
+              <div className="space-y-3">
+                {history.map((submission, idx) => (
+                  <div
+                    key={submission.id}
+                    className="bg-learning-bg border border-learning-muted/10 rounded-lg p-4"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-semibold text-learning-accent">
+                            Версия {submission.version || idx + 1}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded ${
+                            submission.status === 'passed'
+                              ? 'bg-green-500/10 text-green-400'
+                              : submission.status === 'failed'
+                              ? 'bg-red-500/10 text-red-400'
+                              : 'bg-yellow-500/10 text-yellow-400'
+                          }`}>
+                            {submission.status === 'passed' ? '✓ Пройдено' :
+                             submission.status === 'failed' ? '✗ Не пройдено' : 'В процессе'}
+                          </span>
+                          {submission.quality_metrics && (
+                            <span className="text-xs text-learning-muted">
+                              Оценка: {submission.quality_metrics.overall_score}/100
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-learning-muted">
+                          {new Date(submission.submitted_at).toLocaleString('ru-RU')}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => restoreVersion(submission)}
+                        className="px-3 py-1 bg-learning-accent text-white text-sm rounded hover:bg-blue-600 transition-colors"
+                      >
+                        Восстановить
+                      </button>
+                    </div>
+                    <pre className="text-xs text-learning-text bg-learning-surface/50 p-2 rounded overflow-x-auto">
+                      {submission.code}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
