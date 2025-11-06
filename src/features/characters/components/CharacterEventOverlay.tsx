@@ -4,6 +4,7 @@
  * Special full-screen overlays for character events
  */
 
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CharacterEvent, CharacterEventType } from '../types/character.types';
 import { CharacterAvatar } from './CharacterAvatar';
@@ -18,7 +19,7 @@ export const CharacterEventOverlay: React.FC<CharacterEventOverlayProps> = ({
   onComplete,
 }) => {
   // Auto-complete after duration
-  React.useEffect(() => {
+  useEffect(() => {
     if (onComplete) {
       const timer = setTimeout(() => {
         onComplete();

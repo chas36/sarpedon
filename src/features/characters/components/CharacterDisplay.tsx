@@ -4,6 +4,7 @@
  * Main component for displaying characters with messages
  */
 
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CharacterName, MoodType } from '../types/character.types';
 import { CharacterAvatar } from './CharacterAvatar';
@@ -30,7 +31,7 @@ export const CharacterDisplay: React.FC<CharacterDisplayProps> = ({
   autoHideDuration = 5000,
 }) => {
   // Auto-hide after duration
-  React.useEffect(() => {
+  useEffect(() => {
     if (autoHide && onComplete) {
       const timer = setTimeout(() => {
         onComplete();
