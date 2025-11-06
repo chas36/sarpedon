@@ -12,6 +12,10 @@ import { useSubmissionCharacter } from '@/features/characters';
 import { CharacterDisplay, CharacterEventOverlay } from '@/features/characters/components';
 import type { CharacterResponse } from '@/features/characters';
 
+// ===== FEATURE FLAG: Temporarily disable characters =====
+// Set to true when character graphics are ready
+const ENABLE_CHARACTERS = false;
+
 export function SolveLevelPage() {
   const { levelId } = useParams<{ levelId: string }>();
   const navigate = useNavigate();
@@ -201,35 +205,37 @@ export function SolveLevelPage() {
           submissionId = submission?.id;
 
           // ===== CHARACTER SYSTEM: Show character with feedback =====
-          try {
-            const qualityScore = aiResponse?.quality_metrics?.overall_score || 0;
-            const characterResp = await showFeedbackCharacter(
-              result.allTestsPassed,
-              qualityScore,
-              attemptNumber,
-              submissionId || '',
-              {
-                consecutiveErrors,
-                totalCompleted,
-                levelDifficulty: level.difficulty,
+          if (ENABLE_CHARACTERS) {
+            try {
+              const qualityScore = aiResponse?.quality_metrics?.overall_score || 0;
+              const characterResp = await showFeedbackCharacter(
+                result.allTestsPassed,
+                qualityScore,
+                attemptNumber,
+                submissionId || '',
+                {
+                  consecutiveErrors,
+                  totalCompleted,
+                  levelDifficulty: level.difficulty,
+                }
+              );
+
+              setCharacterResponse(characterResp);
+              setShowCharacter(true);
+
+              // Update attempt tracking
+              if (result.allTestsPassed) {
+                setAttemptNumber(1); // Reset for next level
+                setConsecutiveErrors(0);
+                setTotalCompleted(prev => prev + 1);
+              } else {
+                setAttemptNumber(prev => prev + 1);
+                setConsecutiveErrors(prev => prev + 1);
               }
-            );
-
-            setCharacterResponse(characterResp);
-            setShowCharacter(true);
-
-            // Update attempt tracking
-            if (result.allTestsPassed) {
-              setAttemptNumber(1); // Reset for next level
-              setConsecutiveErrors(0);
-              setTotalCompleted(prev => prev + 1);
-            } else {
-              setAttemptNumber(prev => prev + 1);
-              setConsecutiveErrors(prev => prev + 1);
+            } catch (err) {
+              console.error('Failed to show character:', err);
+              // Continue without character on error
             }
-          } catch (err) {
-            console.error('Failed to show character:', err);
-            // Continue without character on error
           }
         }
       } else {
@@ -782,7 +788,7 @@ export function SolveLevelPage() {
       )}
 
       {/* ===== CHARACTER MODAL ===== */}
-      {showCharacter && characterResponse && (
+      {ENABLE_CHARACTERS && showCharacter && characterResponse && (
         <Modal
           isOpen={showCharacter}
           onClose={() => setShowCharacter(false)}
