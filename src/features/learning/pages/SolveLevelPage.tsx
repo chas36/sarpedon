@@ -24,7 +24,19 @@ export function SolveLevelPage() {
   const [aiFeedback, setAiFeedback] = useState<AIFeedbackResponse | null>(null);
   const [loadingAI, setLoadingAI] = useState(false);
 
+  // Reset state when levelId changes
   useEffect(() => {
+    // Clear previous level's state
+    setExecutionResult(null);
+    setAiFeedback(null);
+    setCode('');
+    setRunning(false);
+    setLoadingAI(false);
+    setSaving(false);
+    setSaveStatus('idle');
+    setError(null);
+
+    // Load new level data
     if (levelId && user) {
       loadLevel(levelId);
       loadLastSubmission(levelId, user.id);
