@@ -330,6 +330,57 @@ export function SolveLevelPage() {
           )}
         </div>
 
+        {/* Examples Section */}
+        {level.test_cases && level.test_cases.length > 0 && (
+          <div className="bg-learning-surface border border-learning-muted/10 rounded-lg p-4">
+            <h2 className="text-base font-semibold text-learning-text mb-3">
+              📋 Примеры ввода и вывода
+            </h2>
+            <div className="space-y-3">
+              {level.test_cases.slice(0, 3).map((testCase, idx) => (
+                <div
+                  key={idx}
+                  className="bg-learning-bg border border-learning-muted/10 rounded-lg p-3"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs font-semibold text-learning-accent">
+                      Пример {idx + 1}
+                    </span>
+                    {testCase.description && (
+                      <span className="text-xs text-learning-muted">
+                        • {testCase.description}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-3">
+                    <div>
+                      <div className="text-xs font-medium text-learning-muted mb-1">
+                        Входные данные:
+                      </div>
+                      <pre className="text-xs bg-learning-surface p-2 rounded text-learning-text overflow-x-auto">
+                        {testCase.input || '(нет)'}
+                      </pre>
+                    </div>
+                    <div>
+                      <div className="text-xs font-medium text-learning-muted mb-1">
+                        Ожидаемый вывод:
+                      </div>
+                      <pre className="text-xs bg-learning-surface p-2 rounded text-green-400 overflow-x-auto">
+                        {testCase.output}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {level.test_cases.length > 3 && (
+                <div className="text-xs text-learning-muted text-center">
+                  ... и ещё {level.test_cases.length - 3} тест(ов) для проверки
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Code Editor */}
         <div className="bg-learning-surface border border-learning-muted/10 rounded-lg p-4 flex-1">
           <h2 className="text-base font-semibold text-learning-text mb-2">

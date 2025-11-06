@@ -412,9 +412,14 @@ export function LevelEditorPage() {
         {/* Test Cases */}
         <div className="bg-admin-surface rounded-lg p-6 border border-admin-muted/10 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-admin-text">Тест-кейсы *</h2>
-            <Button type="button" variant="secondary" size="sm" onClick={addTestCase}>
-              + Добавить тест
+            <div>
+              <h2 className="text-xl font-semibold text-admin-text">Тест-кейсы *</h2>
+              <p className="text-xs text-admin-muted mt-1">
+                Первые 3 теста будут показаны студентам как примеры
+              </p>
+            </div>
+            <Button type="button" variant="primary" size="md" onClick={addTestCase}>
+              + Добавить больше тестовых данных
             </Button>
           </div>
 
@@ -424,9 +429,23 @@ export function LevelEditorPage() {
 
           <div className="space-y-4">
             {formData.test_cases.map((testCase, index) => (
-              <div key={index} className="bg-admin-bg rounded-lg p-4 border border-admin-muted/10">
+              <div
+                key={index}
+                className={`bg-admin-bg rounded-lg p-4 border ${
+                  index < 3
+                    ? 'border-admin-accent/30 ring-1 ring-admin-accent/10'
+                    : 'border-admin-muted/10'
+                }`}
+              >
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-admin-text">Тест #{index + 1}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-medium text-admin-text">Тест #{index + 1}</h3>
+                    {index < 3 && (
+                      <span className="text-xs px-2 py-0.5 bg-admin-accent/20 text-admin-accent rounded-full">
+                        👁️ Пример для студентов
+                      </span>
+                    )}
+                  </div>
                   {formData.test_cases.length > 1 && (
                     <Button
                       type="button"
@@ -481,6 +500,19 @@ export function LevelEditorPage() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Add more tests button at the bottom */}
+          <div className="flex items-center justify-center pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              onClick={addTestCase}
+              className="w-full max-w-md"
+            >
+              + Добавить ещё один тест
+            </Button>
           </div>
         </div>
 
