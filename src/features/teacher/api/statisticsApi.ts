@@ -204,19 +204,15 @@ export async function getRecentActivity(limit: number = 20): Promise<
     .from('submissions')
     .select(`
       *,
-      profiles(*),
-      levels(*)
+      student:profiles!user_id(*),
+      level:levels(*)
     `)
     .order('submitted_at', { ascending: false })
     .limit(limit);
 
   if (!submissions) return [];
 
-  return submissions.map(s => ({
-    ...s,
-    student: s.profiles,
-    level: s.levels,
-  }));
+  return submissions;
 }
 
 /**
@@ -331,17 +327,14 @@ export async function getStudentSubmissions(
     .from('submissions')
     .select(`
       *,
-      levels(*)
+      level:levels(*)
     `)
     .eq('user_id', studentId)
     .order('submitted_at', { ascending: false });
 
   if (!submissions) return [];
 
-  return submissions.map(s => ({
-    ...s,
-    level: s.levels,
-  }));
+  return submissions;
 }
 
 /**
@@ -547,7 +540,7 @@ export async function getLevelStatistics(levelId: string): Promise<{
     .from('submissions')
     .select(`
       *,
-      profiles(*)
+      student:profiles!user_id(*)
     `)
     .eq('level_id', levelId)
     .order('submitted_at', { ascending: false });
@@ -583,7 +576,7 @@ export async function getLevelStatistics(levelId: string): Promise<{
   submissions.forEach(s => {
     if (!studentMap.has(s.user_id)) {
       studentMap.set(s.user_id, {
-        student: s.profiles,
+        student: s.student,
         attempts: 0,
         isCorrect: false,
         lastSubmittedAt: s.submitted_at,
@@ -642,7 +635,7 @@ export async function getLevelRecentSubmissions(
     .from('submissions')
     .select(`
       *,
-      profiles(*)
+      student:profiles!user_id(*)
     `)
     .eq('level_id', levelId)
     .order('submitted_at', { ascending: false })
@@ -650,10 +643,7 @@ export async function getLevelRecentSubmissions(
 
   if (!submissions) return [];
 
-  return submissions.map(s => ({
-    ...s,
-    student: s.profiles,
-  }));
+  return submissions;
 }
 
 /**
