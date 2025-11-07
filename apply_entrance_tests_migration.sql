@@ -1,4 +1,11 @@
 -- ============================================
+-- APPLY ONLY: Entrance Tests Migration
+-- ============================================
+-- This applies ONLY the entrance_tests migration (20251110000000)
+-- The other 3 migrations have already been applied via Dashboard
+-- ============================================
+
+-- ============================================
 -- Migration: Entrance Test System
 -- Description: System for assessing initial student proficiency level
 -- ============================================
