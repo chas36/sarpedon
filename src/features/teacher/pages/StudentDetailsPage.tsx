@@ -15,6 +15,10 @@ import type {
 } from '@/features/teacher/api/proficiencyApi';
 import { Button, Spinner } from '@/shared/components/ui';
 import { SetProficiencyModal } from '../components/SetProficiencyModal';
+import { ProficiencyTrendChart } from '../components/charts/ProficiencyTrendChart';
+import { SkillsRadarChart } from '../components/charts/SkillsRadarChart';
+import { PeriodComparisonCard } from '../components/PeriodComparisonCard';
+import { SkillChangesCard } from '../components/SkillChangesCard';
 
 const getProficiencyBadgeColor = (level?: string) => {
   switch (level) {
@@ -608,6 +612,39 @@ export function StudentDetailsPage() {
           </div>
         )}
       </div>
+
+      {/* Detailed Statistics & Charts */}
+      {id && proficiencyOverview && (
+        <>
+          {/* Period Comparison & Skill Changes */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <PeriodComparisonCard studentId={id} currentPeriodDays={7} previousPeriodDays={7} />
+            <SkillChangesCard studentId={id} daysBack={7} />
+          </div>
+
+          {/* Proficiency Trend Chart */}
+          <div className="bg-admin-surface rounded-lg border border-admin-muted/10 p-6">
+            <h2 className="text-xl font-semibold text-admin-text mb-4">
+              📈 История изменения профессионализма
+            </h2>
+            <p className="text-sm text-admin-muted mb-6">
+              График показывает динамику изменения баллов и уровня за последние 30 дней
+            </p>
+            <ProficiencyTrendChart studentId={id} daysBack={30} height={300} />
+          </div>
+
+          {/* Skills Radar Chart */}
+          <div className="bg-admin-surface rounded-lg border border-admin-muted/10 p-6">
+            <h2 className="text-xl font-semibold text-admin-text mb-4">
+              🎯 Профиль навыков (Radar Chart)
+            </h2>
+            <p className="text-sm text-admin-muted mb-6">
+              Визуализация уровня владения всеми 12 навыками программирования
+            </p>
+            <SkillsRadarChart studentId={id} height={400} />
+          </div>
+        </>
+      )}
 
       {/* Profile Info */}
       <div className="bg-admin-surface rounded-lg border border-admin-muted/10 p-6">
