@@ -210,7 +210,7 @@ BEGIN
 
   -- Update proficiency for each target skill in the level
   IF v_level.target_skills IS NOT NULL THEN
-    FOREACH v_skill IN ARRAY v_level.target_skills
+    FOR v_skill IN SELECT jsonb_array_elements_text(v_level.target_skills)
     LOOP
       PERFORM update_skill_proficiency(
         v_submission.user_id,
