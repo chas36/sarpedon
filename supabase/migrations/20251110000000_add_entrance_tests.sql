@@ -85,11 +85,13 @@ ALTER TABLE public.entrance_test_answers ENABLE ROW LEVEL SECURITY;
 -- ============================================
 
 -- entrance_tests policies
+DROP POLICY IF EXISTS "Everyone can view active tests" ON public.entrance_tests;
 CREATE POLICY "Everyone can view active tests"
   ON public.entrance_tests FOR SELECT
   TO authenticated
   USING (is_active = true);
 
+DROP POLICY IF EXISTS "Teachers can manage all tests" ON public.entrance_tests;
 CREATE POLICY "Teachers can manage all tests"
   ON public.entrance_tests FOR ALL
   TO authenticated
@@ -101,6 +103,7 @@ CREATE POLICY "Teachers can manage all tests"
   );
 
 -- entrance_test_questions policies
+DROP POLICY IF EXISTS "Students can view questions of active tests" ON public.entrance_test_questions;
 CREATE POLICY "Students can view questions of active tests"
   ON public.entrance_test_questions FOR SELECT
   TO authenticated
@@ -111,6 +114,7 @@ CREATE POLICY "Students can view questions of active tests"
     )
   );
 
+DROP POLICY IF EXISTS "Teachers can manage all questions" ON public.entrance_test_questions;
 CREATE POLICY "Teachers can manage all questions"
   ON public.entrance_test_questions FOR ALL
   TO authenticated
@@ -122,21 +126,25 @@ CREATE POLICY "Teachers can manage all questions"
   );
 
 -- entrance_test_attempts policies
+DROP POLICY IF EXISTS "Students can view own attempts" ON public.entrance_test_attempts;
 CREATE POLICY "Students can view own attempts"
   ON public.entrance_test_attempts FOR SELECT
   TO authenticated
   USING (student_id = auth.uid());
 
+DROP POLICY IF EXISTS "Students can create own attempts" ON public.entrance_test_attempts;
 CREATE POLICY "Students can create own attempts"
   ON public.entrance_test_attempts FOR INSERT
   TO authenticated
   WITH CHECK (student_id = auth.uid());
 
+DROP POLICY IF EXISTS "Students can update own attempts" ON public.entrance_test_attempts;
 CREATE POLICY "Students can update own attempts"
   ON public.entrance_test_attempts FOR UPDATE
   TO authenticated
   USING (student_id = auth.uid());
 
+DROP POLICY IF EXISTS "Teachers can view all attempts" ON public.entrance_test_attempts;
 CREATE POLICY "Teachers can view all attempts"
   ON public.entrance_test_attempts FOR SELECT
   TO authenticated
@@ -148,6 +156,7 @@ CREATE POLICY "Teachers can view all attempts"
   );
 
 -- entrance_test_answers policies
+DROP POLICY IF EXISTS "Students can view own answers" ON public.entrance_test_answers;
 CREATE POLICY "Students can view own answers"
   ON public.entrance_test_answers FOR SELECT
   TO authenticated
@@ -158,6 +167,7 @@ CREATE POLICY "Students can view own answers"
     )
   );
 
+DROP POLICY IF EXISTS "Students can insert own answers" ON public.entrance_test_answers;
 CREATE POLICY "Students can insert own answers"
   ON public.entrance_test_answers FOR INSERT
   TO authenticated
@@ -168,6 +178,7 @@ CREATE POLICY "Students can insert own answers"
     )
   );
 
+DROP POLICY IF EXISTS "Teachers can view all answers" ON public.entrance_test_answers;
 CREATE POLICY "Teachers can view all answers"
   ON public.entrance_test_answers FOR SELECT
   TO authenticated
