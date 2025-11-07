@@ -82,6 +82,9 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
             <Link to="/teacher/students" className={navLinkClass('/teacher/students')}>
               Ученики
             </Link>
+            <Link to="/teacher/proficiency-analytics" className={navLinkClass('/teacher/proficiency-analytics')}>
+              📊 Аналитика
+            </Link>
             <Link to="/teacher/levels" className={navLinkClass('/teacher/levels')}>
               Уровни
             </Link>

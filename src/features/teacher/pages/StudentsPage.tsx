@@ -33,11 +33,28 @@ const getProficiencyLabel = (level?: string) => {
   }
 };
 
+const needsHelp = (student: Profile): boolean => {
+  const score = student.proficiency_score || 0;
+  const level = student.proficiency_level;
+
+  if (level === 'beginner' && score < 35) return true;
+  if (level === 'intermediate' && score < 50) return true;
+  if (level === 'advanced' && score < 65) return true;
+  if (!student.proficiency_last_assessed) return true;
+
+  return false;
+};
+
+type SortOption = 'name' | 'score-asc' | 'score-desc' | 'class';
+
 export function StudentsPage() {
   const navigate = useNavigate();
   const [students, setStudents] = useState<Profile[]>([]);
   const [classes, setClasses] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('all');
+  const [selectedProficiency, setSelectedProficiency] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('name');
+  const [showNeedsHelpOnly, setShowNeedsHelpOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,9 +84,42 @@ export function StudentsPage() {
     }
   }
 
-  const filteredStudents = selectedClass === 'all'
-    ? students
-    : students.filter(s => s.class === selectedClass);
+  // Apply filters
+  let filteredStudents = students;
+
+  // Filter by class
+  if (selectedClass !== 'all') {
+    filteredStudents = filteredStudents.filter(s => s.class === selectedClass);
+  }
+
+  // Filter by proficiency level
+  if (selectedProficiency !== 'all') {
+    filteredStudents = filteredStudents.filter(s => s.proficiency_level === selectedProficiency);
+  }
+
+  // Filter by needs help
+  if (showNeedsHelpOnly) {
+    filteredStudents = filteredStudents.filter(needsHelp);
+  }
+
+  // Apply sorting
+  const sortedStudents = [...filteredStudents].sort((a, b) => {
+    switch (sortBy) {
+      case 'name':
+        return `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`);
+      case 'score-asc':
+        return (a.proficiency_score || 0) - (b.proficiency_score || 0);
+      case 'score-desc':
+        return (b.proficiency_score || 0) - (a.proficiency_score || 0);
+      case 'class':
+        return (a.class || '').localeCompare(b.class || '');
+      default:
+        return 0;
+    }
+  });
+
+  // Calculate stats
+  const needsHelpCount = filteredStudents.filter(needsHelp).length;
 
   if (loading) {
     return (
@@ -98,6 +148,13 @@ export function StudentsPage() {
           <Button
             variant="secondary"
             size="sm"
+            onClick={() => navigate('/teacher/proficiency-analytics')}
+          >
+            📊 Аналитика
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setShowManageClassesModal(true)}
           >
             Управление классами
@@ -118,47 +175,133 @@ export function StudentsPage() {
         </div>
       </div>
 
-      {/* Class Filter */}
-      <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-admin-text">Класс:</label>
-        <select
-          value={selectedClass}
-          onChange={(e) => setSelectedClass(e.target.value)}
-          className="px-3 py-2 bg-admin-surface border border-admin-muted/20 rounded-lg text-admin-text focus:outline-none focus:ring-2 focus:ring-admin-accent"
-        >
-          <option value="all">Все классы</option>
-          {classes.map(cls => (
-            <option key={cls} value={cls}>{cls}</option>
-          ))}
-        </select>
+      {/* Filters */}
+      <div className="bg-admin-surface rounded-lg border border-admin-muted/10 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          {/* Class Filter */}
+          <div>
+            <label className="text-xs font-medium text-admin-muted uppercase mb-1 block">Класс</label>
+            <select
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+              className="w-full px-3 py-2 bg-admin-bg border border-admin-muted/20 rounded-lg text-admin-text focus:outline-none focus:ring-2 focus:ring-admin-accent"
+            >
+              <option value="all">Все классы</option>
+              {classes.map(cls => (
+                <option key={cls} value={cls}>{cls}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Proficiency Filter */}
+          <div>
+            <label className="text-xs font-medium text-admin-muted uppercase mb-1 block">Уровень</label>
+            <select
+              value={selectedProficiency}
+              onChange={(e) => setSelectedProficiency(e.target.value)}
+              className="w-full px-3 py-2 bg-admin-bg border border-admin-muted/20 rounded-lg text-admin-text focus:outline-none focus:ring-2 focus:ring-admin-accent"
+            >
+              <option value="all">Все уровни</option>
+              <option value="beginner">Начинающий</option>
+              <option value="intermediate">Средний</option>
+              <option value="advanced">Продвинутый</option>
+            </select>
+          </div>
+
+          {/* Sort */}
+          <div>
+            <label className="text-xs font-medium text-admin-muted uppercase mb-1 block">Сортировка</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="w-full px-3 py-2 bg-admin-bg border border-admin-muted/20 rounded-lg text-admin-text focus:outline-none focus:ring-2 focus:ring-admin-accent"
+            >
+              <option value="name">По имени</option>
+              <option value="score-desc">По баллам (↓)</option>
+              <option value="score-asc">По баллам (↑)</option>
+              <option value="class">По классу</option>
+            </select>
+          </div>
+
+          {/* Needs Help Filter */}
+          <div>
+            <label className="text-xs font-medium text-admin-muted uppercase mb-1 block">Фильтр</label>
+            <button
+              onClick={() => setShowNeedsHelpOnly(!showNeedsHelpOnly)}
+              className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                showNeedsHelpOnly
+                  ? 'bg-admin-danger text-white'
+                  : 'bg-admin-bg border border-admin-muted/20 text-admin-text hover:bg-admin-surface'
+              }`}
+            >
+              {showNeedsHelpOnly ? '⚠️ Нужна помощь' : 'Все студенты'}
+            </button>
+          </div>
+
+          {/* Reset */}
+          <div className="flex items-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSelectedClass('all');
+                setSelectedProficiency('all');
+                setSortBy('name');
+                setShowNeedsHelpOnly(false);
+              }}
+              className="w-full"
+            >
+              Сбросить
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-admin-surface rounded-lg p-4 border border-admin-muted/10">
           <div className="text-sm text-admin-muted">Всего студентов</div>
           <div className="text-2xl font-bold text-admin-text mt-1">{students.length}</div>
         </div>
         <div className="bg-admin-surface rounded-lg p-4 border border-admin-muted/10">
-          <div className="text-sm text-admin-muted">В выбранном классе</div>
-          <div className="text-2xl font-bold text-admin-accent mt-1">{filteredStudents.length}</div>
+          <div className="text-sm text-admin-muted">После фильтрации</div>
+          <div className="text-2xl font-bold text-admin-accent mt-1">{sortedStudents.length}</div>
         </div>
         <div className="bg-admin-surface rounded-lg p-4 border border-admin-muted/10">
           <div className="text-sm text-admin-muted">Классов</div>
           <div className="text-2xl font-bold text-admin-text mt-1">{classes.length}</div>
         </div>
+        <div className="bg-admin-surface rounded-lg p-4 border border-admin-danger/10">
+          <div className="text-sm text-admin-muted">Нуждаются в помощи</div>
+          <div className="text-2xl font-bold text-admin-danger mt-1">{needsHelpCount}</div>
+        </div>
       </div>
 
       {/* Students List */}
-      {filteredStudents.length === 0 ? (
+      {sortedStudents.length === 0 ? (
         <div className="bg-admin-surface rounded-lg p-12 text-center border border-admin-muted/10">
           <p className="text-admin-muted">Студенты не найдены</p>
+          {(selectedClass !== 'all' || selectedProficiency !== 'all' || showNeedsHelpOnly) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSelectedClass('all');
+                setSelectedProficiency('all');
+                setShowNeedsHelpOnly(false);
+              }}
+              className="mt-4"
+            >
+              Сбросить фильтры
+            </Button>
+          )}
         </div>
       ) : (
         <div className="bg-admin-surface rounded-lg border border-admin-muted/10 overflow-hidden">
           <table className="w-full">
             <thead className="bg-admin-bg border-b border-admin-muted/10">
               <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-admin-muted uppercase">Статус</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-admin-muted uppercase">Имя</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-admin-muted uppercase">Класс</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-admin-muted uppercase">Уровень владения</th>
@@ -167,44 +310,63 @@ export function StudentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-muted/10">
-              {filteredStudents.map((student) => (
-                <tr key={student.id} className="hover:bg-admin-bg/50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-admin-text">
-                      {student.first_name} {student.last_name}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 text-xs font-medium rounded bg-admin-accent/20 text-admin-accent">
-                      {student.class || 'Не указан'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${getProficiencyBadgeColor(student.proficiency_level)}`}>
-                        {getProficiencyLabel(student.proficiency_level)}
-                      </span>
-                      {student.proficiency_score !== undefined && (
-                        <span className="text-xs text-admin-muted">
-                          ({student.proficiency_score}/100)
+              {sortedStudents.map((student) => {
+                const studentNeedsHelp = needsHelp(student);
+                return (
+                  <tr
+                    key={student.id}
+                    className={`hover:bg-admin-bg/50 transition-colors ${studentNeedsHelp ? 'bg-admin-danger/5' : ''}`}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {studentNeedsHelp ? (
+                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-admin-danger text-white text-xs font-bold" title="Нуждается в помощи">
+                          !
+                        </span>
+                      ) : (
+                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-green-500/20 text-green-500 text-xs">
+                          ✓
                         </span>
                       )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-admin-muted">
-                    {student.generated_login || student.id.slice(0, 8)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigate(`/teacher/students/${student.id}`)}
-                    >
-                      Подробнее
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-admin-text">
+                        {student.first_name} {student.last_name}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 py-1 text-xs font-medium rounded bg-admin-accent/20 text-admin-accent">
+                        {student.class || 'Не указан'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 text-xs font-medium rounded ${getProficiencyBadgeColor(student.proficiency_level)}`}>
+                          {getProficiencyLabel(student.proficiency_level)}
+                        </span>
+                        {student.proficiency_score !== undefined && (
+                          <span className={`text-xs font-semibold ${
+                            studentNeedsHelp ? 'text-admin-danger' : 'text-admin-muted'
+                          }`}>
+                            {student.proficiency_score}/100
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-admin-muted">
+                      {student.generated_login || student.id.slice(0, 8)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate(`/teacher/students/${student.id}`)}
+                      >
+                        Подробнее
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

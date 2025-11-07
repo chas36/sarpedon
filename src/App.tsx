@@ -13,6 +13,7 @@ import { StatisticsPage } from './features/teacher/pages/StatisticsPage';
 import { StudentAnalyticsPage } from './features/teacher/pages/StudentAnalyticsPage';
 import { LevelAnalyticsPage } from './features/teacher/pages/LevelAnalyticsPage';
 import { ClassAnalyticsPage } from './features/teacher/pages/ClassAnalyticsPage';
+import { ProficiencyDashboardPage } from './features/teacher/pages/ProficiencyDashboardPage';
 import { TakeEntranceTestPage } from './features/entrance-test/pages/TakeEntranceTestPage';
 import { EntranceTestResultsPage } from './features/entrance-test/pages/EntranceTestResultsPage';
 import { EntranceTestManagePage } from './features/entrance-test/pages/EntranceTestManagePage';
@@ -122,6 +123,7 @@ function App() {
                   <Route path="students" element={<StudentsPage />} />
                   <Route path="students/:id" element={<StudentDetailsPage />} />
                   <Route path="students/:id/analytics" element={<StudentAnalyticsPage />} />
+                  <Route path="proficiency-analytics" element={<ProficiencyDashboardPage />} />
                   <Route path="levels" element={<LevelsManagePage />} />
                   <Route path="levels/:id" element={<LevelEditorPage />} />
                   <Route path="levels/:id/analytics" element={<LevelAnalyticsPage />} />
