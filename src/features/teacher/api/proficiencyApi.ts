@@ -14,15 +14,14 @@ export interface ProficiencyData {
 
 export interface ProficiencyHistoryRecord {
   id: string;
-  student_id: string;
-  old_level: ProficiencyLevel;
+  user_id: string;
+  old_level: ProficiencyLevel | null;
   new_level: ProficiencyLevel;
-  old_score: number;
+  old_score: number | null;
   new_score: number;
-  change_reason: 'automatic' | 'manual' | 'entrance_test';
+  reason: 'auto_calculation' | 'manual_override' | 'entrance_test' | 'initial_assessment';
   changed_by: string | null;
   changed_at: string;
-  notes: string | null;
 }
 
 export interface WeakArea {
@@ -73,7 +72,7 @@ export async function getStudentProficiencyHistory(
   const { data, error } = await supabase
     .from('proficiency_history')
     .select('*')
-    .eq('student_id', studentId)
+    .eq('user_id', studentId)
     .order('changed_at', { ascending: false });
 
   if (error) throw error;
@@ -89,7 +88,7 @@ export async function getStudentWeakAreas(
   limit: number = 3
 ): Promise<WeakArea[]> {
   const { data, error } = await supabase.rpc('get_student_weak_areas', {
-    p_user_id: studentId,
+    p_student_id: studentId,
     p_limit: limit
   });
 
@@ -168,13 +167,13 @@ export async function setStudentProficiency(
   studentId: string,
   level: ProficiencyLevel,
   score: number,
-  notes?: string
+  reason?: string
 ): Promise<void> {
   const { error } = await supabase.rpc('set_student_proficiency_manual', {
     p_student_id: studentId,
-    p_new_level: level,
-    p_new_score: score,
-    p_notes: notes || null
+    p_level: level,
+    p_score: score,
+    p_reason: reason || 'Установлено учителем'
   });
 
   if (error) throw error;
