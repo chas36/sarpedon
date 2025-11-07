@@ -92,8 +92,9 @@ BEGIN
       THEN 'Поможет улучшить слабые навыки: ' ||
            ARRAY_TO_STRING(
              ARRAY(
-               SELECT jsonb_array_elements_text(l.target_skills)
-               WHERE jsonb_array_elements_text = ANY(v_weak_skills)
+               SELECT skill
+               FROM jsonb_array_elements_text(l.target_skills) AS skill
+               WHERE skill = ANY(v_weak_skills)
                LIMIT 2
              ),
              ', '
