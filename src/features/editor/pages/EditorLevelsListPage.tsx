@@ -86,7 +86,7 @@ export function EditorLevelsListPage() {
             Всего создано: {levels.length} {levels.length === 1 ? 'задание' : 'заданий'}
           </p>
         </div>
-        <Button onClick={() => navigate('/editor/levels/new')}>
+        <Button onClick={() => navigate('/student/editor/levels/new')}>
           ➕ Создать задание
         </Button>
       </div>
@@ -100,7 +100,7 @@ export function EditorLevelsListPage() {
           <p className="text-learning-muted mb-6">
             Создайте первое задание для других учеников!
           </p>
-          <Button onClick={() => navigate('/editor/levels/new')}>
+          <Button onClick={() => navigate('/student/editor/levels/new')}>
             Создать первое задание
           </Button>
         </div>
@@ -150,7 +150,7 @@ export function EditorLevelsListPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => navigate(`/editor/levels/${level.id}`)}
+                  onClick={() => navigate(`/student/editor/levels/${level.id}`)}
                   className="flex-1"
                 >
                   ✏️ Редактировать

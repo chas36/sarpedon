@@ -4,7 +4,6 @@ import { LoginPage } from './features/auth/pages/LoginPage';
 import { RoleGuard } from './shared/components/guards/RoleGuard';
 import { StudentLayout } from './layouts/StudentLayout';
 import { TeacherLayout } from './layouts/TeacherLayout';
-import { EditorLayout } from './layouts/EditorLayout';
 import { LevelsListPage, SolveLevelPage, ProgressPage } from './features/learning/pages';
 import { LevelsManagePage } from './features/teacher/pages/LevelsManagePage';
 import { LevelEditorPage } from './features/teacher/pages/LevelEditorPage';
@@ -15,6 +14,8 @@ import { StudentAnalyticsPage } from './features/teacher/pages/StudentAnalyticsP
 import { LevelAnalyticsPage } from './features/teacher/pages/LevelAnalyticsPage';
 import { ClassAnalyticsPage } from './features/teacher/pages/ClassAnalyticsPage';
 import { ProficiencyDashboardPage } from './features/teacher/pages/ProficiencyDashboardPage';
+import { ModerationPage } from './features/teacher/pages/ModerationPage';
+import { AuthorStatsPage } from './features/teacher/pages/AuthorStatsPage';
 import { TakeEntranceTestPage } from './features/entrance-test/pages/TakeEntranceTestPage';
 import { EntranceTestResultsPage } from './features/entrance-test/pages/EntranceTestResultsPage';
 import { EntranceTestManagePage } from './features/entrance-test/pages/EntranceTestManagePage';
@@ -95,7 +96,7 @@ function App() {
           }
         />
 
-        {/* Student routes */}
+        {/* Student routes (также используется редакторами) */}
         <Route
           path="/student/*"
           element={
@@ -108,6 +109,9 @@ function App() {
                   <Route path="progress" element={<ProgressPage />} />
                   <Route path="entrance-test/:testId" element={<TakeEntranceTestPage />} />
                   <Route path="competitions" element={<div>Соревнования - в разработке</div>} />
+                  {/* Editor routes - только для студентов с is_editor=true */}
+                  <Route path="editor/my-levels" element={<EditorLevelsListPage />} />
+                  <Route path="editor/levels/:id" element={<SimpleLevelEditorPage />} />
                 </Routes>
               </StudentLayout>
             </RoleGuard>
@@ -133,26 +137,12 @@ function App() {
                   <Route path="entrance-tests" element={<EntranceTestManagePage />} />
                   <Route path="entrance-tests/results" element={<EntranceTestResultsPage />} />
                   <Route path="entrance-tests/:testId/edit" element={<EntranceTestEditorPage />} />
+                  <Route path="moderation" element={<ModerationPage />} />
+                  <Route path="author-stats" element={<AuthorStatsPage />} />
                   <Route path="competitions" element={<div>Соревнования - в разработке</div>} />
                   <Route path="statistics" element={<StatisticsPage />} />
                 </Routes>
               </TeacherLayout>
-            </RoleGuard>
-          }
-        />
-
-        {/* Editor routes - только для редакторов */}
-        <Route
-          path="/editor/*"
-          element={
-            <RoleGuard allowedRoles={['editor']}>
-              <EditorLayout>
-                <Routes>
-                  <Route index element={<Navigate to="/editor/levels" replace />} />
-                  <Route path="levels" element={<EditorLevelsListPage />} />
-                  <Route path="levels/:id" element={<SimpleLevelEditorPage />} />
-                </Routes>
-              </EditorLayout>
             </RoleGuard>
           }
         />
@@ -186,10 +176,6 @@ function RoleRedirect() {
 
   if (role === 'teacher') {
     return <Navigate to="/teacher" replace />;
-  }
-
-  if (role === 'editor') {
-    return <Navigate to="/editor" replace />;
   }
 
   // Fallback to login if role is not set

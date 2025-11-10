@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllStudents, getAllClasses, updateStudentRole } from '@/features/teacher/api/studentsApi';
+import { getAllStudents, getAllClasses, toggleEditorFlag } from '@/features/teacher/api/studentsApi';
 import { Button, Spinner } from '@/shared/components/ui';
 import { AddStudentModal } from '../components/AddStudentModal';
 import { BulkImportStudentsModal } from '../components/BulkImportStudentsModal';
@@ -87,24 +87,24 @@ export function StudentsPage() {
     }
   }
 
-  async function handleToggleRole(student: Profile) {
-    const newRole = student.role === 'student' ? 'editor' : 'student';
-    const roleName = newRole === 'editor' ? 'редактором' : 'студентом';
+  async function handleToggleEditorFlag(student: Profile) {
+    const newIsEditor = !student.is_editor;
+    const action = newIsEditor ? 'дать права редактора' : 'убрать права редактора';
 
-    if (!confirm(`Сделать ${student.first_name} ${student.last_name} ${roleName}?`)) {
+    if (!confirm(`${action} для ${student.first_name} ${student.last_name}?`)) {
       return;
     }
 
     try {
       setTogglingRole(student.id);
-      await updateStudentRole(student.id, newRole);
+      await toggleEditorFlag(student.id, newIsEditor);
 
       // Update local state
       setStudents(prev => prev.map(s =>
-        s.id === student.id ? { ...s, role: newRole } : s
+        s.id === student.id ? { ...s, is_editor: newIsEditor } : s
       ));
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Ошибка при изменении роли');
+      alert(err instanceof Error ? err.message : 'Ошибка при изменении прав редактора');
     } finally {
       setTogglingRole(null);
     }
@@ -367,18 +367,19 @@ export function StudentsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-1 text-xs font-medium rounded ${
-                          student.role === 'editor'
-                            ? 'bg-purple-500/20 text-purple-500'
-                            : 'bg-blue-500/20 text-blue-500'
-                        }`}>
-                          {student.role === 'editor' ? '✏️ Редактор' : '👤 Студент'}
+                        <span className="px-2 py-1 text-xs font-medium rounded bg-blue-500/20 text-blue-500">
+                          👤 Студент
                         </span>
+                        {student.is_editor && (
+                          <span className="px-2 py-1 text-xs font-medium rounded bg-purple-500/20 text-purple-500">
+                            ✏️ Редактор
+                          </span>
+                        )}
                         <button
-                          onClick={() => handleToggleRole(student)}
+                          onClick={() => handleToggleEditorFlag(student)}
                           disabled={togglingRole === student.id}
                           className="text-xs text-admin-muted hover:text-admin-accent transition-colors disabled:opacity-50"
-                          title={student.role === 'editor' ? 'Убрать права редактора' : 'Сделать редактором'}
+                          title={student.is_editor ? 'Убрать права редактора' : 'Дать права редактора'}
                         >
                           {togglingRole === student.id ? '...' : '🔄'}
                         </button>

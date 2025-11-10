@@ -50,7 +50,7 @@ export function SimpleLevelEditorPage() {
       // Редакторы могут редактировать только свои уровни
       if (level.created_by !== profile?.id) {
         setError('Вы можете редактировать только свои задания');
-        setTimeout(() => navigate('/editor/levels'), 2000);
+        setTimeout(() => navigate('/student/editor/my-levels'), 2000);
         return;
       }
 
@@ -125,7 +125,8 @@ export function SimpleLevelEditorPage() {
       const cleanedData = {
         ...formData,
         hints: formData.hints.filter(h => h.trim() !== ''),
-        test_cases: formData.test_cases.filter(tc => tc.output.trim() !== '')
+        test_cases: formData.test_cases.filter(tc => tc.output.trim() !== ''),
+        moderation_status: 'pending_review' as const // Задания редакторов требуют модерации
       };
 
       if (isEditMode && id) {
@@ -134,7 +135,7 @@ export function SimpleLevelEditorPage() {
         await createLevel(cleanedData, profile.id);
       }
 
-      navigate('/editor/levels');
+      navigate('/student/editor/my-levels');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка при сохранении');
     } finally {
@@ -219,7 +220,7 @@ export function SimpleLevelEditorPage() {
         </div>
         <Button
           variant="ghost"
-          onClick={() => navigate('/editor/levels')}
+          onClick={() => navigate('/student/editor/my-levels')}
         >
           Отмена
         </Button>
@@ -484,7 +485,7 @@ export function SimpleLevelEditorPage() {
           <Button
             type="button"
             variant="ghost"
-            onClick={() => navigate('/editor/levels')}
+            onClick={() => navigate('/student/editor/my-levels')}
             disabled={saving}
           >
             Отмена

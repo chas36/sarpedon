@@ -4,13 +4,13 @@ import { generateUniqueLogin } from '../utils/loginGenerator';
 
 /**
  * Get all students (for teachers)
- * Includes both students and student-editors
+ * Returns all profiles with role='student' (some may have is_editor=true)
  */
 export async function getAllStudents(): Promise<Profile[]> {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .in('role', ['student', 'editor'])
+    .eq('role', 'student')
     .order('last_name', { ascending: true });
 
   if (error) throw error;
@@ -302,15 +302,15 @@ export async function updateCredentials(
 }
 
 /**
- * Update student role (student <-> editor)
+ * Toggle editor flag for a student
  */
-export async function updateStudentRole(
+export async function toggleEditorFlag(
   id: string,
-  role: 'student' | 'editor'
+  isEditor: boolean
 ): Promise<Profile> {
   const { data: profile, error } = await supabase
     .from('profiles')
-    .update({ role })
+    .update({ is_editor: isEditor })
     .eq('id', id)
     .select()
     .single();
