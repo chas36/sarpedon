@@ -5,9 +5,18 @@
 -- PROFILES: Add is_editor flag
 -- ============================================
 
--- Add is_editor column
-ALTER TABLE public.profiles
-ADD COLUMN is_editor BOOLEAN NOT NULL DEFAULT false;
+-- Add is_editor column if not exists
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+    AND table_name = 'profiles'
+    AND column_name = 'is_editor'
+  ) THEN
+    ALTER TABLE public.profiles
+    ADD COLUMN is_editor BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+END $$;
 
 -- Migrate existing data: role='editor' becomes is_editor=true with role='student'
 UPDATE public.profiles
@@ -29,12 +38,48 @@ EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;
 
--- Add moderation columns
-ALTER TABLE public.levels
-ADD COLUMN moderation_status moderation_status NOT NULL DEFAULT 'approved',
-ADD COLUMN moderator_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-ADD COLUMN moderation_notes TEXT,
-ADD COLUMN moderated_at TIMESTAMPTZ;
+-- Add moderation columns if not exist
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+    AND table_name = 'levels'
+    AND column_name = 'moderation_status'
+  ) THEN
+    ALTER TABLE public.levels
+    ADD COLUMN moderation_status moderation_status NOT NULL DEFAULT 'approved';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+    AND table_name = 'levels'
+    AND column_name = 'moderator_id'
+  ) THEN
+    ALTER TABLE public.levels
+    ADD COLUMN moderator_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+    AND table_name = 'levels'
+    AND column_name = 'moderation_notes'
+  ) THEN
+    ALTER TABLE public.levels
+    ADD COLUMN moderation_notes TEXT;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+    AND table_name = 'levels'
+    AND column_name = 'moderated_at'
+  ) THEN
+    ALTER TABLE public.levels
+    ADD COLUMN moderated_at TIMESTAMPTZ;
+  END IF;
+END $$;
 
 -- Set all existing levels to 'approved' (they were created by teachers)
 UPDATE public.levels
@@ -42,7 +87,7 @@ SET moderation_status = 'approved'
 WHERE created_by IS NOT NULL;
 
 -- Add index for filtering by moderation status
-CREATE INDEX idx_levels_moderation_status ON public.levels(moderation_status);
+CREATE INDEX IF NOT EXISTS idx_levels_moderation_status ON public.levels(moderation_status);
 
 -- Add comments
 COMMENT ON COLUMN public.levels.moderation_status IS
@@ -61,6 +106,9 @@ COMMENT ON COLUMN public.levels.moderated_at IS
 -- Update levels visibility: students only see approved levels
 -- Teachers see all levels, editors see their own drafts + approved levels
 DROP POLICY IF EXISTS "Everyone can view levels" ON public.levels;
+DROP POLICY IF EXISTS "Students can view approved levels" ON public.levels;
+DROP POLICY IF EXISTS "Editors can view own levels" ON public.levels;
+DROP POLICY IF EXISTS "Teachers can view all levels" ON public.levels;
 
 CREATE POLICY "Students can view approved levels"
   ON public.levels FOR SELECT
@@ -92,6 +140,8 @@ CREATE POLICY "Teachers can view all levels"
 
 -- Update level creation: editors create with pending_review status
 DROP POLICY IF EXISTS "Teachers can create levels" ON public.levels;
+DROP POLICY IF EXISTS "Teachers can create approved levels" ON public.levels;
+DROP POLICY IF EXISTS "Editors can create draft levels" ON public.levels;
 
 CREATE POLICY "Teachers can create approved levels"
   ON public.levels FOR INSERT
@@ -113,6 +163,8 @@ CREATE POLICY "Editors can create draft levels"
 
 -- Update level editing policies
 DROP POLICY IF EXISTS "Teachers can update levels" ON public.levels;
+DROP POLICY IF EXISTS "Teachers can update any level" ON public.levels;
+DROP POLICY IF EXISTS "Editors can update own draft levels" ON public.levels;
 
 CREATE POLICY "Teachers can update any level"
   ON public.levels FOR UPDATE
@@ -131,6 +183,8 @@ CREATE POLICY "Editors can update own draft levels"
 
 -- Update level deletion policies
 DROP POLICY IF EXISTS "Teachers can delete levels" ON public.levels;
+DROP POLICY IF EXISTS "Teachers can delete any level" ON public.levels;
+DROP POLICY IF EXISTS "Editors can delete own draft levels" ON public.levels;
 
 CREATE POLICY "Teachers can delete any level"
   ON public.levels FOR DELETE
