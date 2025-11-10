@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllStudents, getAllClasses } from '@/features/teacher/api/studentsApi';
+import { getAllStudents, getAllClasses, updateStudentRole } from '@/features/teacher/api/studentsApi';
 import { Button, Spinner } from '@/shared/components/ui';
 import { AddStudentModal } from '../components/AddStudentModal';
 import { BulkImportStudentsModal } from '../components/BulkImportStudentsModal';
@@ -63,6 +63,9 @@ export function StudentsPage() {
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [showManageClassesModal, setShowManageClassesModal] = useState(false);
 
+  // Role toggle state
+  const [togglingRole, setTogglingRole] = useState<string | null>(null);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -81,6 +84,29 @@ export function StudentsPage() {
       setError(err instanceof Error ? err.message : 'Не удалось загрузить студентов');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleToggleRole(student: Profile) {
+    const newRole = student.role === 'student' ? 'editor' : 'student';
+    const roleName = newRole === 'editor' ? 'редактором' : 'студентом';
+
+    if (!confirm(`Сделать ${student.first_name} ${student.last_name} ${roleName}?`)) {
+      return;
+    }
+
+    try {
+      setTogglingRole(student.id);
+      await updateStudentRole(student.id, newRole);
+
+      // Update local state
+      setStudents(prev => prev.map(s =>
+        s.id === student.id ? { ...s, role: newRole } : s
+      ));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Ошибка при изменении роли');
+    } finally {
+      setTogglingRole(null);
     }
   }
 
@@ -304,6 +330,7 @@ export function StudentsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-admin-muted uppercase">Статус</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-admin-muted uppercase">Имя</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-admin-muted uppercase">Класс</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-admin-muted uppercase">Роль</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-admin-muted uppercase">Уровень владения</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-admin-muted uppercase">Логин</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-admin-muted uppercase">Действия</th>
@@ -337,6 +364,25 @@ export function StudentsPage() {
                       <span className="px-2 py-1 text-xs font-medium rounded bg-admin-accent/20 text-admin-accent">
                         {student.class || 'Не указан'}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 text-xs font-medium rounded ${
+                          student.role === 'editor'
+                            ? 'bg-purple-500/20 text-purple-500'
+                            : 'bg-blue-500/20 text-blue-500'
+                        }`}>
+                          {student.role === 'editor' ? '✏️ Редактор' : '👤 Студент'}
+                        </span>
+                        <button
+                          onClick={() => handleToggleRole(student)}
+                          disabled={togglingRole === student.id}
+                          className="text-xs text-admin-muted hover:text-admin-accent transition-colors disabled:opacity-50"
+                          title={student.role === 'editor' ? 'Убрать права редактора' : 'Сделать редактором'}
+                        >
+                          {togglingRole === student.id ? '...' : '🔄'}
+                        </button>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">

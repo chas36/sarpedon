@@ -4,6 +4,7 @@ import { LoginPage } from './features/auth/pages/LoginPage';
 import { RoleGuard } from './shared/components/guards/RoleGuard';
 import { StudentLayout } from './layouts/StudentLayout';
 import { TeacherLayout } from './layouts/TeacherLayout';
+import { EditorLayout } from './layouts/EditorLayout';
 import { LevelsListPage, SolveLevelPage, ProgressPage } from './features/learning/pages';
 import { LevelsManagePage } from './features/teacher/pages/LevelsManagePage';
 import { LevelEditorPage } from './features/teacher/pages/LevelEditorPage';
@@ -18,6 +19,7 @@ import { TakeEntranceTestPage } from './features/entrance-test/pages/TakeEntranc
 import { EntranceTestResultsPage } from './features/entrance-test/pages/EntranceTestResultsPage';
 import { EntranceTestManagePage } from './features/entrance-test/pages/EntranceTestManagePage';
 import { EntranceTestEditorPage } from './features/entrance-test/pages/EntranceTestEditorPage';
+import { EditorLevelsListPage, SimpleLevelEditorPage } from './features/editor/pages';
 import { useAuthStore } from './features/auth/store/authStore';
 import { getCurrentUser, getProfile } from './features/auth/api/authApi';
 import { Spinner } from './shared/components/ui';
@@ -112,11 +114,11 @@ function App() {
           }
         />
 
-        {/* Teacher routes */}
+        {/* Teacher routes - только для учителей */}
         <Route
           path="/teacher/*"
           element={
-            <RoleGuard allowedRoles={['teacher', 'editor']}>
+            <RoleGuard allowedRoles={['teacher']}>
               <TeacherLayout>
                 <Routes>
                   <Route index element={<TeacherDashboard />} />
@@ -135,6 +137,22 @@ function App() {
                   <Route path="statistics" element={<StatisticsPage />} />
                 </Routes>
               </TeacherLayout>
+            </RoleGuard>
+          }
+        />
+
+        {/* Editor routes - только для редакторов */}
+        <Route
+          path="/editor/*"
+          element={
+            <RoleGuard allowedRoles={['editor']}>
+              <EditorLayout>
+                <Routes>
+                  <Route index element={<Navigate to="/editor/levels" replace />} />
+                  <Route path="levels" element={<EditorLevelsListPage />} />
+                  <Route path="levels/:id" element={<SimpleLevelEditorPage />} />
+                </Routes>
+              </EditorLayout>
             </RoleGuard>
           }
         />
@@ -166,8 +184,12 @@ function RoleRedirect() {
     return <Navigate to="/student" replace />;
   }
 
-  if (role === 'teacher' || role === 'editor') {
+  if (role === 'teacher') {
     return <Navigate to="/teacher" replace />;
+  }
+
+  if (role === 'editor') {
+    return <Navigate to="/editor" replace />;
   }
 
   // Fallback to login if role is not set

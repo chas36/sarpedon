@@ -4,12 +4,13 @@ import { generateUniqueLogin } from '../utils/loginGenerator';
 
 /**
  * Get all students (for teachers)
+ * Includes both students and student-editors
  */
 export async function getAllStudents(): Promise<Profile[]> {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .eq('role', 'student')
+    .in('role', ['student', 'editor'])
     .order('last_name', { ascending: true });
 
   if (error) throw error;
@@ -298,4 +299,22 @@ export async function updateCredentials(
     .eq('id', id);
 
   if (profileError) throw profileError;
+}
+
+/**
+ * Update student role (student <-> editor)
+ */
+export async function updateStudentRole(
+  id: string,
+  role: 'student' | 'editor'
+): Promise<Profile> {
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .update({ role })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return profile;
 }
