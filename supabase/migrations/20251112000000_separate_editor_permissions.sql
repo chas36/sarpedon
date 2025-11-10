@@ -7,8 +7,11 @@
 -- ============================================
 
 -- Drop policies that allowed editors to manage profiles
+-- NOTE: We keep "Users can view own profile" and "Users can update own profile" - they are critical!
 DROP POLICY IF EXISTS "Teachers can view all profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Teachers can create profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Teachers can update profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Teachers can delete profiles" ON public.profiles;
 
 -- Drop policies that allowed editors to manage competitions
 DROP POLICY IF EXISTS "Teachers can create competitions" ON public.competitions;
@@ -24,7 +27,18 @@ DROP POLICY IF EXISTS "Teachers can update team scores" ON public.team_scores;
 -- CREATE NEW POLICIES WITH PROPER SEPARATION
 -- ============================================
 
--- PROFILES: Teachers can manage, Editors can only view
+-- PROFILES: Users can view own, Teachers can manage, Editors can only view
+-- Users can view their own profile (CRITICAL - must exist!)
+CREATE POLICY "Users can view own profile"
+  ON public.profiles FOR SELECT
+  USING (auth.uid() = id);
+
+-- Users can update their own profile
+CREATE POLICY "Users can update own profile"
+  ON public.profiles FOR UPDATE
+  USING (auth.uid() = id);
+
+-- Teachers can view all profiles
 CREATE POLICY "Teachers can view all profiles"
   ON public.profiles FOR SELECT
   USING (
@@ -34,6 +48,7 @@ CREATE POLICY "Teachers can view all profiles"
     )
   );
 
+-- Editors can view all profiles
 CREATE POLICY "Editors can view all profiles"
   ON public.profiles FOR SELECT
   USING (
