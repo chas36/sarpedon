@@ -38,10 +38,10 @@ CREATE TABLE IF NOT EXISTS character_interactions (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_character_interactions_user ON character_interactions(user_id);
-CREATE INDEX idx_character_interactions_character ON character_interactions(character_name);
-CREATE INDEX idx_character_interactions_type ON character_interactions(interaction_type);
-CREATE INDEX idx_character_interactions_created ON character_interactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_character_interactions_user ON character_interactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_character_interactions_character ON character_interactions(character_name);
+CREATE INDEX IF NOT EXISTS idx_character_interactions_type ON character_interactions(interaction_type);
+CREATE INDEX IF NOT EXISTS idx_character_interactions_created ON character_interactions(created_at DESC);
 
 -- =====================================================
 -- Table: character_events_history
@@ -59,9 +59,9 @@ CREATE TABLE IF NOT EXISTS character_events_history (
 );
 
 -- Indexes
-CREATE INDEX idx_events_history_user ON character_events_history(user_id);
-CREATE INDEX idx_events_history_cooldown ON character_events_history(cooldown_until);
-CREATE INDEX idx_events_history_type ON character_events_history(event_type);
+CREATE INDEX IF NOT EXISTS idx_events_history_user ON character_events_history(user_id);
+CREATE INDEX IF NOT EXISTS idx_events_history_cooldown ON character_events_history(cooldown_until);
+CREATE INDEX IF NOT EXISTS idx_events_history_type ON character_events_history(event_type);
 
 -- =====================================================
 -- Table: user_character_preferences

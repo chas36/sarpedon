@@ -7,10 +7,11 @@ import type { Submission } from '@/shared/types';
 import { executeCode, runTests } from '@/shared/api/codeExecutionApi';
 import { getAIFeedback } from '@/shared/api/aiFeedbackApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import type { Level, ExecutionResponse, AIFeedbackResponse } from '@/shared/types';
+import type { Level, ExecutionResponse, AIFeedbackResponse, StudentProfile } from '@/shared/types';
 import { useSubmissionCharacter } from '@/features/characters';
 import { CharacterDisplay, CharacterEventOverlay } from '@/features/characters/components';
 import type { CharacterResponse } from '@/features/characters';
+import { supabase } from '@/shared/lib/supabase';
 
 // ===== FEATURE FLAG: Temporarily disable characters =====
 // Set to true when character graphics are ready
@@ -33,6 +34,7 @@ export function SolveLevelPage() {
   const [loadingAI, setLoadingAI] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<Submission[]>([]);
+  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
 
   // Character system state
   const [showCharacter, setShowCharacter] = useState(false);
@@ -61,6 +63,7 @@ export function SolveLevelPage() {
       loadLevel(levelId);
       loadLastSubmission(levelId, user.id);
       loadNextLevelInfo(levelId);
+      loadStudentProfile(user.id);
     }
   }, [levelId, user]);
 
@@ -100,6 +103,49 @@ export function SolveLevelPage() {
       }
     } catch (err) {
       console.log('No previous submission found');
+    }
+  };
+
+  const loadStudentProfile = async (uid: string) => {
+    try {
+      // Load proficiency data
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('proficiency_level, proficiency_score')
+        .eq('id', uid)
+        .single();
+
+      if (profileError) {
+        console.error('Failed to load student profile:', profileError);
+        return;
+      }
+
+      // Load weak areas from skill tracking system
+      const { data: weakAreasData, error: weakAreasError } = await supabase
+        .rpc('get_student_weak_areas', {
+          p_user_id: uid,
+          p_limit: 3
+        });
+
+      if (weakAreasError) {
+        console.error('Failed to load weak areas:', weakAreasError);
+      }
+
+      if (profileData) {
+        const weakAreas = (weakAreasData || []).map((wa: any) => wa.skill_name);
+        const commonMistakes = (weakAreasData || [])
+          .filter((wa: any) => wa.mistake_count > 2)
+          .map((wa: any) => wa.skill_name);
+
+        setStudentProfile({
+          proficiency_level: profileData.proficiency_level || 'beginner',
+          proficiency_score: profileData.proficiency_score || 0,
+          weak_areas: weakAreas,
+          common_mistakes: commonMistakes
+        });
+      }
+    } catch (err) {
+      console.error('Error loading student profile:', err);
     }
   };
 
@@ -179,7 +225,9 @@ export function SolveLevelPage() {
                 actual_output: tr.actualOutput,
                 error: tr.error
               })),
-              hints: level.hints || []
+              hints: level.hints || [],
+              reference_solution: level.reference_solution,
+              student_profile: studentProfile || undefined
             });
             setAiFeedback(aiResponse);
           } catch (err) {

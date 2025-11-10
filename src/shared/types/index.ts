@@ -4,3 +4,4 @@ export * from './level.types';
 export * from './submission.types';
 export * from './execution.types';
 export * from './ai.types';
+export * from './proficiency.types';

@@ -1,42 +1,230 @@
 import { supabase } from '@/shared/lib/supabase';
-import type { AIFeedbackRequest, AIFeedbackResponse } from '@/shared/types';
+import type { AIFeedbackRequest, AIFeedbackResponse, ProficiencyLevel } from '@/shared/types';
 
 /**
  * Groq API Integration via Supabase Edge Function
- * Документация: https://console.groq.com/docs
- *
- * Бесплатный tier:
- * - 14,400 запросов в день
- * - 6,000-15,000 токенов в минуту
- * - OpenAI-совместимый API
- *
- * Модели:
- * - llama-3.3-70b-versatile - мощная, универсальная
- * - llama-3.1-8b-instant - быстрая, легкая
- * - mixtral-8x7b-32768 - хороший контекст
+ * С адаптивными промптами на основе proficiency level
  */
 const USE_AI = true;
-const GROQ_MODEL = 'llama-3.1-8b-instant'; // Быстрая модель для бесплатного tier
-
-// Низкая temperature для более консистентных ответов
+const GROQ_MODEL = 'llama-3.1-8b-instant';
 const AI_TEMPERATURE = 0.3;
 
 /**
- * Создать улучшенный промпт для детального анализа кода
+ * Получить стиль подсказок в зависимости от уровня студента
  */
-function createFeedbackPrompt(request: AIFeedbackRequest): string {
+function getFeedbackStyle(proficiency: ProficiencyLevel): string {
+  switch (proficiency) {
+    case 'beginner':
+      return `**Для НАЧИНАЮЩИХ студентов:**
+- Используй простой и ободряющий язык
+- Указывай на КОНКРЕТНЫЕ строки с ошибками: "На строке 3 в функции print() пропущена закрывающая скобка"
+- Объясняй ПОЧЕМУ это неправильно: "Переменная 'rezult' не совпадает с 'result' - в Python имена должны точно совпадать"
+- Давай пошаговые подсказки
+- Фокусируйся на ОДНОЙ главной проблеме за раз
+- Примеры:
+  * "Проверьте название переменной на строке 5"
+  * "Вы забыли двоеточие после 'if' на строке 2"
+  * "Функция должна ВОЗВРАЩАТЬ значение (return), а не печатать его (print)"`;
+
+    case 'intermediate':
+      return `**Для студентов СРЕДНЕГО уровня:**
+- Умеренная детализация, фокус на логике
+- Упоминай проблемные участки БЕЗ точных номеров строк
+- Объясняй концепции: "Ваш цикл не обрабатывает крайний случай пустого списка"
+- Предлагай 2-3 области для проверки
+- Примеры:
+  * "Проверьте логику условия - оно не учитывает отрицательные числа"
+  * "Цикл while может привести к бесконечной итерации"
+  * "Рассмотрите использование встроенной функции вместо ручной итерации"`;
+
+    case 'advanced':
+      return `**Для ПРОДВИНУТЫХ студентов:**
+- Концептуальная обратная связь высокого уровня
+- БЕЗ номеров строк, фокус на архитектуре
+- Обсуждай эффективность алгоритма, паттерны
+- Предложи найти граничные случаи самостоятельно
+- Примеры:
+  * "Алгоритм работает, но имеет сложность O(n²) - можно оптимизировать до O(n)"
+  * "Решение корректно, но не обрабатывает Unicode символы"
+  * "Рассмотрите функциональный подход вместо императивного"`;
+  }
+}
+
+/**
+ * Получить критерии оценки в зависимости от уровня
+ */
+function getEvaluationCriteria(proficiency: ProficiencyLevel): string {
+  switch (proficiency) {
+    case 'beginner':
+      return `### BEGINNER - Фокус на основах
+1. **Синтаксис и именование** (30%)
+   - Переменные имеют описательные имена (не 'x', 'temp', 'a')
+   - Функции названы с глаголами
+   - Нет русской транслитерации (плохо: 'summa', хорошо: 'sum')
+
+2. **Структура кода** (25%)
+   - Правильные отступы
+   - Разумная длина строк (< 100 символов)
+   - Нет дублированных блоков кода
+
+3. **Базовая корректность** (25%)
+   - Нет неиспользуемых переменных
+   - Все функции используются
+   - Нет явных логических ошибок
+
+4. **Комментарии (если есть)** (20%)
+   - Комментарии объясняют ПОЧЕМУ, а не ЧТО
+   - Нет закомментированного кода`;
+
+    case 'intermediate':
+      return `### INTERMEDIATE - Добавляем сложность и паттерны
+1. **Именование и ясность** (25%)
+   - Последовательное соглашение об именовании (camelCase/snake_case)
+   - Магические числа вынесены в константы
+   - Булевы переменные названы ясно (is*, has*, can*)
+
+2. **Дизайн функций** (25%)
+   - Функции < 50 строк
+   - Принцип единственной ответственности
+   - Разумное количество параметров (< 5)
+
+3. **Обработка ошибок** (20%)
+   - Учтены граничные случаи
+   - Присутствует валидация входных данных
+   - Ошибки не подавляются молча
+
+4. **Паттерны кода** (15%)
+   - Нет глубокой вложенности (макс 3 уровня)
+   - Соблюден принцип DRY
+   - Подходящее использование возможностей языка
+
+5. **Зависимости** (15%)
+   - Нет изменения глобального состояния
+   - Четкий поток данных
+   - Минимальные побочные эффекты`;
+
+    case 'advanced':
+      return `### ADVANCED - Архитектура и эффективность
+1. **Паттерны проектирования** (20%)
+   - Подходящие абстракции
+   - Соблюдение принципов SOLID
+   - Чистая архитектура
+
+2. **Производительность** (20%)
+   - Учтена сложность алгоритма
+   - Нет лишних итераций
+   - Оптимизировано использование памяти
+
+3. **Поддерживаемость** (20%)
+   - Самодокументируемый код
+   - Тестируемая структура
+   - Расширяемый дизайн
+
+4. **Владение языком** (20%)
+   - Идиоматичные паттерны ${'{language}'}
+   - Правильное использование продвинутых возможностей
+   - Использование стандартной библиотеки
+
+5. **Готовность к production** (20%)
+   - Комплексная обработка ошибок
+   - Покрыты граничные случаи
+   - Учтены вопросы безопасности`;
+  }
+}
+
+/**
+ * Получить гайд по оценке в зависимости от уровня
+ */
+function getScoringGuide(proficiency: ProficiencyLevel, difficulty: number): string {
+  const difficultyAdjustment = `
+**Корректировка сложности:**
+- Легкое задание (difficulty ${difficulty} <= 3) для ${proficiency}: Ожидается ${proficiency === 'beginner' ? '70+' : proficiency === 'intermediate' ? '80+' : '85+'} баллов
+- Сложное задание (difficulty ${difficulty} >= 7) для ${proficiency}: Приемлемо ${proficiency === 'beginner' ? '50+' : proficiency === 'intermediate' ? '60+' : '70+'} баллов`;
+
+  switch (proficiency) {
+    case 'beginner':
+      return `**Для BEGINNER:**
+- 90-100: Отлично - Чистый синтаксис, хорошие имена, нет базовых ошибок
+- 75-89: Хорошо - Минимальные проблемы с именованием или небольшие повторы
+- 60-74: Приемлемо - Работает, но есть несколько проблем с именованием/структурой
+- 40-59: Требует доработки - Много базовых ошибок (именование, неиспользуемые переменные, плохие отступы)
+- 0-39: Плохо - Серьезные проблемы с синтаксисом, нет структуры, непонятные имена
+
+${difficultyAdjustment}`;
+
+    case 'intermediate':
+      return `**Для INTERMEDIATE:**
+- 90-100: Отлично - Чистые паттерны, хорошая обработка ошибок, DRY
+- 75-89: Хорошо - Солидная структура с минимальными нарушениями паттернов
+- 60-74: Приемлемо - Работает, но есть повторяющийся код или глубокая вложенность
+- 40-59: Требует доработки - Плохой дизайн функций или отсутствует обработка ошибок
+- 0-39: Плохо - Нет паттернов, глубокая вложенность, магические числа везде
+
+${difficultyAdjustment}`;
+
+    case 'advanced':
+      return `**Для ADVANCED:**
+- 90-100: Отлично - Готов к production, оптимальная сложность, чистая архитектура
+- 75-89: Хорошо - Солидный дизайн с минимальными возможностями для оптимизации
+- 60-74: Приемлемо - Работает, но субоптимальная сложность или отсутствуют абстракции
+- 40-59: Требует доработки - Плохая архитектура или неэффективные алгоритмы
+- 0-39: Плохо - Неподдерживаемый или крайне неэффективный код
+
+${difficultyAdjustment}`;
+  }
+}
+
+/**
+ * Создать улучшенный промпт с учетом уровня студента
+ */
+function createAdaptiveFeedbackPrompt(request: AIFeedbackRequest): string {
   const difficultyLevel = request.difficulty || 5;
-  const isBeginnerLevel = difficultyLevel <= 3;
+  const proficiency = request.student_profile?.proficiency_level || 'beginner';
+  const proficiencyScore = request.student_profile?.proficiency_score || 0;
+  const weakAreas = request.student_profile?.weak_areas || [];
+  const commonMistakes = request.student_profile?.common_mistakes || [];
+
+  // PRE-VALIDATION: Отклоняем слишком короткий код
+  const codeLength = request.code.trim().length;
+  if (codeLength < 10) {
+    // Это обрабатывается вне AI - в самой функции getAIFeedback
+    return '';
+  }
 
   let prompt = `Ты - AI наставник по программированию для образовательной платформы.
+Ты анализируешь код от студента уровня **${proficiency.toUpperCase()}** (${proficiencyScore}/100).
 
-КРИТИЧЕСКИ ВАЖНО: Твои оценки должны быть КОНСИСТЕНТНЫМИ - один и тот же код всегда должен получать ОДИНАКОВУЮ оценку. Используй детерминированные критерии.
+**КРИТИЧЕСКИ ВАЖНО:**
+- Твои оценки должны быть КОНСИСТЕНТНЫМИ - ОДИНАКОВЫЙ код ВСЕГДА получает ОДИНАКОВУЮ оценку
+- Уровень студента (${proficiency}) влияет ТОЛЬКО на СТИЛЬ обратной связи, НЕ на корректность оценки
+- Используй детерминированные критерии оценки
 
-Задание: ${request.task_description}
-Язык программирования: ${request.language}
-Уровень сложности: ${difficultyLevel}/10 ${isBeginnerLevel ? '(начинающий уровень)' : ''}
+**Контекст студента:**
+- Уровень владения: ${proficiency} (${proficiencyScore}/100)`;
 
-Код студента:
+  if (weakAreas.length > 0) {
+    prompt += `\n- Слабые места: ${weakAreas.join(', ')}`;
+  }
+
+  if (commonMistakes.length > 0) {
+    prompt += `\n- Частые ошибки: ${commonMistakes.join(', ')}`;
+  }
+
+  prompt += `
+
+**Задание:**
+${request.task_description}
+
+**Язык программирования:** ${request.language}
+**Уровень сложности задания:** ${difficultyLevel}/10
+
+${request.reference_solution ? `**Эталонное решение (для сравнения):**
+\`\`\`${request.language}
+${request.reference_solution}
+\`\`\`
+` : ''}
+
+**Код студента:**
 \`\`\`${request.language}
 ${request.code}
 \`\`\`
@@ -47,7 +235,7 @@ ${request.code}
     const passedTests = request.test_results.filter(t => t.actual_output === t.expected_output).length;
     const totalTests = request.test_results.length;
 
-    prompt += `\n📊 Результаты тестирования: ${passedTests}/${totalTests} тестов пройдено\n`;
+    prompt += `\n📊 **Результаты тестирования:** ${passedTests}/${totalTests} тестов пройдено\n`;
 
     request.test_results.forEach((test, idx) => {
       const status = test.actual_output === test.expected_output ? '✅ PASS' : '❌ FAIL';
@@ -62,53 +250,68 @@ ${request.code}
     prompt += '\n';
   }
 
-  prompt += `\n📋 ЗАДАЧА АНАЛИЗА:
+  prompt += `
+---
 
-Оцени код строго по критериям (0-100 баллов каждый):
+📋 **ЗАДАЧА АНАЛИЗА:**
 
-1. READABILITY (читаемость):
-   - Понятные имена переменных/функций
-   - Правильное форматирование
-   - Комментарии там где нужно
+${getEvaluationCriteria(proficiency)}
 
-2. CORRECTNESS (корректность):
-   - Правильная логика для всех тестов
-   - Обработка граничных случаев
-   - Отсутствие логических ошибок
+**OVERALL_SCORE** = среднее арифметическое всех метрик выше
 
-3. EFFICIENCY (эффективность):
-   - Оптимальность для уровня ${difficultyLevel}/10
-   - Нет избыточных операций
+---
 
-4. BEST_PRACTICES (лучшие практики):
-   - Соблюдение конвенций ${request.language}
-   - Правильное использование языковых конструкций
+**СТИЛЬ ОБРАТНОЙ СВЯЗИ:**
 
-OVERALL_SCORE = среднее арифметическое 4-х оценок выше
+${getFeedbackStyle(proficiency)}
 
-Дай ${isBeginnerLevel ? 'простые и понятные' : 'детальные'} подсказки:
-- Что конкретно не так (укажи на ошибки в тестах)
-- Как направить мысль студента (НЕ давай готовое решение!)
-- Максимум 3 подсказки, каждая < 100 символов
+---
 
-ФОРМАТ ОТВЕТА (строго JSON):
+**SCORING GUIDE:**
+
+${getScoringGuide(proficiency, difficultyLevel)}
+
+---
+
+**КОНТЕКСТ СЛАБЫХ МЕСТ:**
+${weakAreas.length > 0 ? `- Студент имеет слабости в: ${weakAreas.join(', ')}. Уделите особое внимание этим аспектам.` : '- Слабые места пока не выявлены.'}
+${commonMistakes.length > 0 ? `- Частые ошибки студента: "${commonMistakes.join(', ')}". Проверьте, не повторяются ли они.` : ''}
+
+---
+
+**СРАВНЕНИЕ С ЭТАЛОНОМ:**
+${request.reference_solution ? `1. Сравни структуру кода с эталонным решением
+2. Отметь, является ли подход студента:
+   - Более сложным чем нужно (предложи упрощение)
+   - Более элегантным (похвали!)
+   - Другим, но валидным (объясни компромиссы)
+3. НЕ штрафуй за креативные решения, которые работают` : 'Эталонное решение не предоставлено.'}
+
+---
+
+**ФОРМАТ ОТВЕТА (строго JSON):**
+
 \`\`\`json
 {
   "readability": <0-100>,
   "correctness": <0-100>,
   "efficiency": <0-100>,
   "best_practices": <0-100>,
-  "overall_score": <среднее>,
-  "feedback": "<2-3 предложения о главной проблеме>",
+  "overall_score": <среднее арифметическое>,
+  "feedback": "<2-3 предложения о главной проблеме, адаптированные под уровень ${proficiency}>",
   "suggestions": [
-    "<подсказка 1>",
+    "<подсказка 1, специфичная для уровня ${proficiency}>",
     "<подсказка 2>",
     "<подсказка 3>"
   ]
 }
 \`\`\`
 
-Отвечай ТОЛЬКО валидным JSON, без дополнительного текста. Язык: русский.`;
+**ВАЖНО:**
+- Отвечай ТОЛЬКО валидным JSON, без дополнительного текста
+- Язык: русский
+- Будь ${proficiency === 'beginner' ? 'очень поддерживающим и детальным' : proficiency === 'intermediate' ? 'балансируй между поддержкой и вызовом' : 'профессиональным, сжатым и требовательным'}
+`;
 
   return prompt;
 }
@@ -177,65 +380,55 @@ function parseAIResponse(text: string): AIFeedbackResponse {
 
 /**
  * Получить обратную связь от AI по коду студента
+ * УЛУЧШЕННАЯ ВЕРСИЯ с адаптивными промптами
  */
 export async function getAIFeedback(request: AIFeedbackRequest): Promise<AIFeedbackResponse> {
-  // Если AI временно отключен, возвращаем умные fallback подсказки
-  if (!USE_AI) {
-    // Анализируем результаты тестов для персонализированных подсказок
-    const suggestions: string[] = [];
-    let feedback = 'Давай разберемся что пошло не так! ';
-
-    if (request.test_results && request.test_results.length > 0) {
-      const failedTests = request.test_results.filter(tr => tr.actual_output !== tr.expected_output);
-
-      if (failedTests.length === request.test_results.length) {
-        feedback += 'Все тесты не прошли. Проверь основную логику программы.';
-        suggestions.push('Внимательно перечитай условие задачи - возможно ты неправильно понял что нужно сделать');
-      } else {
-        feedback += `${failedTests.length} из ${request.test_results.length} тестов не прошли. Ты на правильном пути!`;
-        suggestions.push('Основная логика работает, но есть крайние случаи которые нужно обработать');
-      }
-
-      // Проверяем типичные ошибки
-      const hasEmptyOutput = failedTests.some(t => !t.actual_output || t.actual_output.trim() === '');
-      const hasExtraSpaces = failedTests.some(t => t.actual_output.trim() === t.expected_output.trim() && t.actual_output !== t.expected_output);
-      const hasWrongFormat = failedTests.some(t => t.actual_output.length !== t.expected_output.length);
-
-      if (hasEmptyOutput) {
-        suggestions.push('Некоторые тесты не дают вывод - убедись что используешь print() для вывода результата');
-      }
-      if (hasExtraSpaces) {
-        suggestions.push('Проблема с пробелами или переносами строк - проверь форматирование вывода');
-      }
-      if (hasWrongFormat && !hasEmptyOutput) {
-        suggestions.push('Формат вывода не совпадает - сравни длину и структуру твоего вывода с ожидаемым');
-      }
-    }
-
-    // Базовые подсказки если не нашли специфичных
-    if (suggestions.length === 0) {
-      suggestions.push('Сравни свой вывод с ожидаемым символ за символом');
-      suggestions.push('Попробуй запустить код вручную с тестовыми данными');
-    }
-
-    suggestions.push('Используй подсказки из условия задачи - они помогут найти решение');
-
+  // PRE-VALIDATION: Отклоняем слишком короткий или пустой код
+  const codeLength = request.code.trim().replace(/\s+/g, '').length;
+  if (codeLength < 10) {
     return {
       success: false,
-      feedback,
-      suggestions,
-      error: 'Using smart fallback hints (HuggingFace API unavailable)'
+      feedback: 'Пожалуйста, напишите решение задачи. Код слишком короткий.',
+      suggestions: [
+        'Прочитай условие задачи внимательно',
+        'Напиши код, который решает задачу',
+        'Убедись, что твой код выводит результат'
+      ],
+      quality_metrics: {
+        overall_score: 0,
+        readability: 0,
+        correctness: 0,
+        efficiency: 0,
+        best_practices: 0
+      }
+    };
+  }
+
+  // Если AI временно отключен
+  if (!USE_AI) {
+    return {
+      success: false,
+      feedback: 'AI временно недоступен, но ты можешь попробовать сам!',
+      suggestions: [
+        'Проверь, правильно ли ты понял условие задачи',
+        'Убедись, что твой код выводит результат в нужном формате',
+        'Попробуй протестировать код с примерами из задания'
+      ],
+      error: 'AI disabled'
     };
   }
 
   try {
-    const prompt = createFeedbackPrompt(request);
+    const prompt = createAdaptiveFeedbackPrompt(request);
 
-    // Логируем для отладки
-    console.log('Calling Edge Function ai-feedback');
-    console.log('AI Request Model:', GROQ_MODEL);
+    if (!prompt) {
+      throw new Error('Failed to create prompt');
+    }
 
-    // Вызываем Edge Function вместо прямого запроса к Groq API
+    console.log('Calling Edge Function ai-feedback (adaptive mode)');
+    console.log('Student proficiency:', request.student_profile?.proficiency_level || 'unknown');
+
+    // Вызываем Edge Function
     const { data, error } = await supabase.functions.invoke('ai-feedback', {
       body: {
         model: GROQ_MODEL,
@@ -245,14 +438,11 @@ export async function getAIFeedback(request: AIFeedbackRequest): Promise<AIFeedb
             content: prompt
           }
         ],
-        temperature: AI_TEMPERATURE,  // Низкая temperature для консистентности
-        max_tokens: 800,  // Увеличено для структурированного ответа
+        temperature: AI_TEMPERATURE,
+        max_tokens: 1000,  // Увеличено для более детальных ответов
         top_p: 0.9
       }
     });
-
-    // Логируем ответ для отладки
-    console.log('Edge Function response:', { data, error });
 
     if (error) {
       console.error('Edge Function error:', error);
@@ -263,7 +453,6 @@ export async function getAIFeedback(request: AIFeedbackRequest): Promise<AIFeedb
       throw new Error('No data returned from Edge Function');
     }
 
-    // Groq использует OpenAI формат: data.choices[0].message.content
     const generatedText = data.choices?.[0]?.message?.content;
 
     if (!generatedText) {
@@ -276,7 +465,7 @@ export async function getAIFeedback(request: AIFeedbackRequest): Promise<AIFeedb
   } catch (error) {
     console.error('AI Feedback error:', error);
 
-    // Вернуть fallback подсказки если AI не доступен
+    // Fallback подсказки
     return {
       success: false,
       feedback: 'AI временно недоступен, но ты можешь попробовать сам!',

@@ -14,6 +14,10 @@ export interface Profile {
   generated_login?: string;
   email?: string;
   generated_password?: string;
+  proficiency_level?: 'beginner' | 'intermediate' | 'advanced';
+  proficiency_score?: number;
+  proficiency_last_assessed?: string;
+  proficiency_manual_override?: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -10,3 +10,5 @@ export { Modal } from './Modal';
 
 export { Card } from './Card';
 export type { CardProps } from './Card';
+
+export { ProficiencyBadge } from './ProficiencyBadge';

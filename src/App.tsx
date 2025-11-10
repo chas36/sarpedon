@@ -13,6 +13,11 @@ import { StatisticsPage } from './features/teacher/pages/StatisticsPage';
 import { StudentAnalyticsPage } from './features/teacher/pages/StudentAnalyticsPage';
 import { LevelAnalyticsPage } from './features/teacher/pages/LevelAnalyticsPage';
 import { ClassAnalyticsPage } from './features/teacher/pages/ClassAnalyticsPage';
+import { ProficiencyDashboardPage } from './features/teacher/pages/ProficiencyDashboardPage';
+import { TakeEntranceTestPage } from './features/entrance-test/pages/TakeEntranceTestPage';
+import { EntranceTestResultsPage } from './features/entrance-test/pages/EntranceTestResultsPage';
+import { EntranceTestManagePage } from './features/entrance-test/pages/EntranceTestManagePage';
+import { EntranceTestEditorPage } from './features/entrance-test/pages/EntranceTestEditorPage';
 import { useAuthStore } from './features/auth/store/authStore';
 import { getCurrentUser, getProfile } from './features/auth/api/authApi';
 import { Spinner } from './shared/components/ui';
@@ -99,6 +104,7 @@ function App() {
                   <Route path="levels" element={<LevelsListPage />} />
                   <Route path="levels/:levelId/solve" element={<SolveLevelPage />} />
                   <Route path="progress" element={<ProgressPage />} />
+                  <Route path="entrance-test/:testId" element={<TakeEntranceTestPage />} />
                   <Route path="competitions" element={<div>Соревнования - в разработке</div>} />
                 </Routes>
               </StudentLayout>
@@ -117,10 +123,14 @@ function App() {
                   <Route path="students" element={<StudentsPage />} />
                   <Route path="students/:id" element={<StudentDetailsPage />} />
                   <Route path="students/:id/analytics" element={<StudentAnalyticsPage />} />
+                  <Route path="proficiency-analytics" element={<ProficiencyDashboardPage />} />
                   <Route path="levels" element={<LevelsManagePage />} />
                   <Route path="levels/:id" element={<LevelEditorPage />} />
                   <Route path="levels/:id/analytics" element={<LevelAnalyticsPage />} />
                   <Route path="classes/:name" element={<ClassAnalyticsPage />} />
+                  <Route path="entrance-tests" element={<EntranceTestManagePage />} />
+                  <Route path="entrance-tests/results" element={<EntranceTestResultsPage />} />
+                  <Route path="entrance-tests/:testId/edit" element={<EntranceTestEditorPage />} />
                   <Route path="competitions" element={<div>Соревнования - в разработке</div>} />
                   <Route path="statistics" element={<StatisticsPage />} />
                 </Routes>

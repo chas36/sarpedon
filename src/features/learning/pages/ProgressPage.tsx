@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Spinner } from '@/shared/components/ui';
 import { getUserProgress } from '../api/submissionsApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { ProficiencyCard } from '../components/ProficiencyCard';
+import { SkillsProgressCard } from '../components/SkillsProgressCard';
 import type { UserProgress } from '@/shared/types';
 
 export function ProgressPage() {
@@ -72,6 +74,12 @@ export function ProgressPage() {
           Отслеживайте свои достижения и прогресс в обучении
         </p>
       </div>
+
+      {/* Proficiency Level Card */}
+      {user && <ProficiencyCard studentId={user.id} />}
+
+      {/* Skills Progress Card */}
+      {user && <SkillsProgressCard studentId={user.id} />}
 
       {/* Progress Overview */}
       <div className="bg-learning-surface border border-learning-muted/10 rounded-lg p-6">
