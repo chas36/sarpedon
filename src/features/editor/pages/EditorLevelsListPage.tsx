@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllLevels, deleteLevel } from '@/features/learning/api/levelsApi';
+import { getLevels, deleteLevel } from '@/features/learning/api/levelsApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button, Spinner } from '@/shared/components/ui';
 import type { Level } from '@/shared/types';
@@ -21,7 +21,7 @@ export function EditorLevelsListPage() {
     try {
       setLoading(true);
       setError(null);
-      const allLevels = await getAllLevels();
+      const allLevels = await getLevels();
 
       // Показываем только задания, созданные этим редактором
       const myLevels = allLevels.filter(level => level.created_by === profile?.id);
