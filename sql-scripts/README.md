@@ -14,10 +14,13 @@
 
 - **`fix_missing_functions.sql`** - Исправляет отсутствующие функции в БД
 - **`fix_skill_tracking_function.sql`** - Исправляет функцию отслеживания навыков
+- **`fix_complete_entrance_test.sql`** - Пересоздает функцию complete_entrance_test с правильными правами
 
 ## Проверка и отладка
 
 - **`check_submissions_schema.sql`** - Проверяет схему таблицы submissions
+- **`check_entrance_test_permissions.sql`** - Проверяет права на функции входного тестирования
+- **`diagnose_rpc_endpoint.sql`** - 🔧 **Диагностика RPC 404 ошибок** - полная проверка функции и перезагрузка схемы PostgREST
 - **`verify_migrations_dashboard.sql`** - Проверяет применение миграций
 - **`sync_migrations_state.sql`** - Синхронизирует состояние миграций
 
