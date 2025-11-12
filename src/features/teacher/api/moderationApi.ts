@@ -121,7 +121,7 @@ export async function getModerationStats(): Promise<ModerationStats> {
   const { data, error } = await supabase
     .from('levels')
     .select('moderation_status')
-    .neq('created_by', null); // Only editor-created levels
+    .not('created_by', 'is', null); // Only editor-created levels
 
   if (error) throw error;
 
