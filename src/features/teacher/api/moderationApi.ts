@@ -225,7 +225,10 @@ export async function importLevelsFromJSON(
           created_by: authorId
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase insert error:', error);
+        throw new Error(`${error.message} (code: ${error.code})`);
+      }
       result.imported++;
     } catch (err) {
       result.failed++;
