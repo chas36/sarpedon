@@ -9,26 +9,40 @@ export interface LevelWithAuthor extends Level {
  * Get all levels pending moderation
  */
 export async function getPendingLevels(): Promise<LevelWithAuthor[]> {
-  const { data, error } = await supabase
+  // Get pending levels
+  const { data: levels, error: levelsError } = await supabase
     .from('levels')
-    .select(`
-      *,
-      author:created_by (
-        id,
-        first_name,
-        last_name,
-        full_name
-      )
-    `)
+    .select('*')
     .eq('moderation_status', 'pending_review')
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
+  console.log('getPendingLevels: levels result', { levels, error: levelsError });
 
-  // Transform the nested author object
-  return (data || []).map(level => ({
+  if (levelsError) throw levelsError;
+  if (!levels || levels.length === 0) return [];
+
+  // Get unique author IDs
+  const authorIds = [...new Set(levels.map(l => l.created_by).filter(Boolean))];
+
+  // Get author profiles (if there are any)
+  let authors: Profile[] = [];
+  if (authorIds.length > 0) {
+    const { data: authorsData, error: authorsError } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name, full_name')
+      .in('id', authorIds);
+
+    if (authorsError) throw authorsError;
+    authors = authorsData || [];
+  }
+
+  // Create a map of authors by ID
+  const authorsMap = new Map(authors?.map(a => [a.id, a]) || []);
+
+  // Merge levels with authors
+  return levels.map(level => ({
     ...level,
-    author: level.author ? (Array.isArray(level.author) ? level.author[0] : level.author) : undefined
+    author: level.created_by ? authorsMap.get(level.created_by) : undefined
   })) as LevelWithAuthor[];
 }
 

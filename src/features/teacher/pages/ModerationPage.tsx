@@ -34,9 +34,12 @@ export function ModerationPage() {
         getPendingLevels(),
         getModerationStats()
       ]);
+      console.log('Loaded pending levels:', levelsData);
+      console.log('Loaded stats:', statsData);
       setLevels(levelsData);
       setStats(statsData);
     } catch (err) {
+      console.error('Error loading moderation data:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить данные');
     } finally {
       setLoading(false);
