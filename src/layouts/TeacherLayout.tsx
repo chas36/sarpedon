@@ -108,6 +108,14 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
               <span>📈</span>
               <span className="hidden md:inline">Статистика</span>
             </Link>
+            <Link to="/teacher/moderation" className={navLinkClass('/teacher/moderation')}>
+              <span>🛡️</span>
+              <span className="hidden md:inline">Модерация</span>
+            </Link>
+            <Link to="/teacher/author-stats" className={navLinkClass('/teacher/author-stats')}>
+              <span>✍️</span>
+              <span className="hidden md:inline">Авторы</span>
+            </Link>
             <Link to="/teacher/competitions" className={navLinkClass('/teacher/competitions')}>
               <span>🏆</span>
               <span className="hidden md:inline">Соревнования</span>
