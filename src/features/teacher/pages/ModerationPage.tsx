@@ -170,7 +170,7 @@ export function ModerationPage() {
                 <div className="flex-1">
                   <h3 className="text-xl font-semibold text-admin-text">{level.title}</h3>
                   <p className="text-sm text-admin-muted mt-1">
-                    Автор: {level.author?.full_name || level.author?.first_name + ' ' + level.author?.last_name || 'Неизвестно'}
+                    Автор: {level.author?.full_name || level.author?.last_name + ' ' + level.author?.first_name || 'Неизвестно'}
                   </p>
                   <div className="flex items-center gap-4 mt-2 text-sm text-admin-muted">
                     <span>Сложность: {level.difficulty}/10</span>

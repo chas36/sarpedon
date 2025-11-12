@@ -91,7 +91,7 @@ export function StudentsPage() {
     const newIsEditor = !student.is_editor;
     const action = newIsEditor ? 'дать права редактора' : 'убрать права редактора';
 
-    if (!confirm(`${action} для ${student.first_name} ${student.last_name}?`)) {
+    if (!confirm(`${action} для ${student.last_name} ${student.first_name}?`)) {
       return;
     }
 
@@ -357,7 +357,7 @@ export function StudentsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-admin-text">
-                        {student.first_name} {student.last_name}
+                        {student.last_name} {student.first_name}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

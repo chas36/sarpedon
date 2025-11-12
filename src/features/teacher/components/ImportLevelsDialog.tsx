@@ -128,7 +128,7 @@ export function ImportLevelsDialog({ onClose, onSuccess }: ImportLevelsDialogPro
                   <option value="">Я (учитель) - задания будут одобрены сразу</option>
                   {editors.map((editor) => (
                     <option key={editor.id} value={editor.id}>
-                      {editor.first_name} {editor.last_name} ({editor.class || 'без класса'}) - задания на модерацию
+                      {editor.last_name} {editor.first_name} ({editor.class || 'без класса'}) - задания на модерацию
                     </option>
                   ))}
                 </select>

@@ -181,7 +181,7 @@ export function StudentDetailsPage() {
     if (!id || !student) return;
 
     const confirmed = window.confirm(
-      `Сбросить пароль для ${student.first_name} ${student.last_name}? Пароль будет равен логину.`
+      `Сбросить пароль для ${student.last_name} ${student.first_name}? Пароль будет равен логину.`
     );
 
     if (!confirmed) return;
@@ -199,7 +199,7 @@ export function StudentDetailsPage() {
     if (!id || !student) return;
 
     const confirmed = window.confirm(
-      `Удалить ученика ${student.first_name} ${student.last_name}? Это действие нельзя отменить.`
+      `Удалить ученика ${student.last_name} ${student.first_name}? Это действие нельзя отменить.`
     );
 
     if (!confirmed) return;
@@ -276,7 +276,7 @@ export function StudentDetailsPage() {
             ) : (
               <div>
                 <h1 className="text-3xl font-bold text-admin-text">
-                  {student.first_name} {student.last_name}
+                  {student.last_name} {student.first_name}
                 </h1>
                 <p className="text-admin-muted mt-1">Класс: {student.class || 'Не указан'}</p>
               </div>
@@ -685,7 +685,7 @@ export function StudentDetailsPage() {
             loadProficiencyData();
           }}
           studentId={student.id}
-          studentName={`${student.first_name} ${student.last_name}`}
+          studentName={`${student.last_name} ${student.first_name}`}
           currentLevel={proficiencyOverview?.proficiency_level}
           currentScore={proficiencyOverview?.proficiency_score}
         />

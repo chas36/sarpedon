@@ -103,7 +103,7 @@ export function AuthorStatsPage() {
                 <tr key={stat.author.id} className="hover:bg-admin-bg/50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-admin-text">
-                      {stat.author.full_name || `${stat.author.first_name} ${stat.author.last_name}`}
+                      {stat.author.full_name || `${stat.author.last_name} ${stat.author.first_name}`}
                     </div>
                     <div className="text-xs text-admin-muted">{stat.author.class || 'Без класса'}</div>
                   </td>

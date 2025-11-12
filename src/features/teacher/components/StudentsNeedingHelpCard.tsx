@@ -169,7 +169,7 @@ export function StudentsNeedingHelpCard({ className, limit = 10 }: StudentsNeedi
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-admin-text">
-                    {student.first_name} {student.last_name}
+                    {student.last_name} {student.first_name}
                   </span>
                   {student.class && (
                     <span className="px-2 py-0.5 text-xs font-medium rounded bg-admin-muted/20 text-admin-muted">

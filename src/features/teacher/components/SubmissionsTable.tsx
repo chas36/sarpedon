@@ -73,7 +73,7 @@ export function SubmissionsTable({
                     className="hover:text-admin-accent"
                   >
                     <div className="font-medium text-admin-text">
-                      {submission.student.first_name} {submission.student.last_name}
+                      {submission.student.last_name} {submission.student.first_name}
                     </div>
                     <div className="text-xs text-admin-muted">
                       {submission.student.class}
