@@ -5,6 +5,7 @@ import { RoleGuard } from './shared/components/guards/RoleGuard';
 import { StudentLayout } from './layouts/StudentLayout';
 import { TeacherLayout } from './layouts/TeacherLayout';
 import { LevelsListPage, SolveLevelPage, ProgressPage } from './features/learning/pages';
+import { StudentDashboardPage } from './features/learning/pages/StudentDashboardPage';
 import { TeacherDashboardPage } from './features/teacher/pages/TeacherDashboardPage';
 import { LevelsManagePage } from './features/teacher/pages/LevelsManagePage';
 import { LevelEditorPage } from './features/teacher/pages/LevelEditorPage';
@@ -82,7 +83,7 @@ function App() {
             <RoleGuard allowedRoles={['student']}>
               <StudentLayout>
                 <Routes>
-                  <Route index element={<Navigate to="/student/levels" replace />} />
+                  <Route index element={<StudentDashboardPage />} />
                   <Route path="levels" element={<LevelsListPage />} />
                   <Route path="levels/:levelId/solve" element={<SolveLevelPage />} />
                   <Route path="progress" element={<ProgressPage />} />

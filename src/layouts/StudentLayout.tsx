@@ -23,6 +23,22 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     }
   };
 
+  const isActive = (path: string) => {
+    // Для главной страницы - точное совпадение
+    if (path === '/student') {
+      return location.pathname === '/student';
+    }
+    // Для остальных - начинается с пути
+    return location.pathname.startsWith(path);
+  };
+
+  const navLinkClass = (path: string) =>
+    `flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-all ${
+      isActive(path)
+        ? 'text-learning-accent bg-learning-accent/10'
+        : 'text-learning-text hover:text-learning-accent hover:bg-learning-accent/5'
+    }`;
+
   return (
     <div className="min-h-screen bg-learning-bg">
       {/* Header */}
@@ -30,7 +46,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <div className="flex items-center space-x-3">
+            <Link to="/student" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
               <img
                 src="/logo.png"
                 alt="Sarpedon"
@@ -42,7 +58,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               <div className="text-sm text-learning-muted hidden sm:block">
                 Студент
               </div>
-            </div>
+            </Link>
 
             {/* User Info */}
             <div className="flex items-center space-x-4">
@@ -69,61 +85,35 @@ export function StudentLayout({ children }: StudentLayoutProps) {
       {/* Navigation */}
       <nav className="bg-learning-surface border-b border-learning-muted/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8 h-12 items-center">
-            <Link
-              to="/student/levels"
-              className={`text-sm font-medium transition-colors ${
-                location.pathname === '/student/levels'
-                  ? 'text-learning-accent border-b-2 border-learning-accent'
-                  : 'text-learning-text hover:text-learning-accent'
-              }`}
-            >
-              Уровни
+          <div className="flex gap-2 py-2 overflow-x-auto">
+            <Link to="/student" className={navLinkClass('/student')}>
+              <span>🏠</span>
+              <span className="hidden md:inline">Главная</span>
             </Link>
-            <Link
-              to="/student/progress"
-              className={`text-sm font-medium transition-colors ${
-                location.pathname === '/student/progress'
-                  ? 'text-learning-accent border-b-2 border-learning-accent'
-                  : 'text-learning-text hover:text-learning-accent'
-              }`}
-            >
-              Мой прогресс
+            <Link to="/student/levels" className={navLinkClass('/student/levels')}>
+              <span>📚</span>
+              <span className="hidden md:inline">Уровни</span>
             </Link>
-            <Link
-              to="/student/competitions"
-              className={`text-sm font-medium transition-colors ${
-                location.pathname === '/student/competitions'
-                  ? 'text-learning-accent border-b-2 border-learning-accent'
-                  : 'text-learning-text hover:text-learning-accent'
-              }`}
-            >
-              Соревнования
+            <Link to="/student/progress" className={navLinkClass('/student/progress')}>
+              <span>📊</span>
+              <span className="hidden md:inline">Мой прогресс</span>
+            </Link>
+            <Link to="/student/competitions" className={navLinkClass('/student/competitions')}>
+              <span>🏆</span>
+              <span className="hidden md:inline">Соревнования</span>
             </Link>
 
             {/* Editor menu items - only visible if is_editor=true */}
             {profile?.is_editor && (
               <>
-                <div className="border-l border-learning-muted/20 h-6 mx-2" />
-                <Link
-                  to="/student/editor/my-levels"
-                  className={`text-sm font-medium transition-colors ${
-                    location.pathname.startsWith('/student/editor')
-                      ? 'text-purple-500 border-b-2 border-purple-500'
-                      : 'text-learning-text hover:text-purple-500'
-                  }`}
-                >
-                  ✏️ Мои задания
+                <div className="border-l border-learning-muted/20 h-8 mx-2" />
+                <Link to="/student/editor/my-levels" className={navLinkClass('/student/editor/my-levels')}>
+                  <span>✏️</span>
+                  <span className="hidden md:inline">Мои задания</span>
                 </Link>
-                <Link
-                  to="/student/editor/levels/new"
-                  className={`text-sm font-medium transition-colors ${
-                    location.pathname === '/student/editor/levels/new'
-                      ? 'text-purple-500 border-b-2 border-purple-500'
-                      : 'text-learning-text hover:text-purple-500'
-                  }`}
-                >
-                  ➕ Создать задание
+                <Link to="/student/editor/levels/new" className={navLinkClass('/student/editor/levels/new')}>
+                  <span>➕</span>
+                  <span className="hidden md:inline">Создать</span>
                 </Link>
               </>
             )}
