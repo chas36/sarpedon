@@ -10,7 +10,7 @@ POST https://uanfulofnrhcqugmxpna.supabase.co/rest/v1/rpc/complete_entrance_test
 
 ## Решение
 
-Миграция уже подготовлена в файле `apply_entrance_tests_migration.sql`, но не была применена к базе данных.
+Миграция находится в файле `supabase/migrations/20251110000000_add_entrance_tests.sql`, но не была применена к базе данных.
 
 ### Шаги для применения миграции:
 
@@ -23,8 +23,8 @@ POST https://uanfulofnrhcqugmxpna.supabase.co/rest/v1/rpc/complete_entrance_test
    - Нажмите "New query"
 
 3. **Скопируйте и выполните SQL**
-   - Откройте файл `apply_entrance_tests_migration.sql`
-   - Скопируйте весь его содержимое
+   - Откройте файл `supabase/migrations/20251110000000_add_entrance_tests.sql` в вашем проекте
+   - Скопируйте весь его содержимое (440 строк)
    - Вставьте в SQL Editor
    - Нажмите "Run" (или Ctrl/Cmd + Enter)
 
