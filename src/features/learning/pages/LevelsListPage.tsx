@@ -57,6 +57,10 @@ export function LevelsListPage() {
         getRecommendedLevels(user.id, 10),
       ]);
 
+      // Filter to only show approved levels in the main student view
+      // Editors' draft/rejected/pending levels should only appear in /student/editor/my-levels
+      const approvedLevels = levelsData.filter(level => level.moderation_status === 'approved');
+
       setProficiencyLevel(profLevel);
 
       // Create set of recommended level IDs
@@ -73,7 +77,7 @@ export function LevelsListPage() {
       }, {} as Record<string, Submission[]>);
 
       // Enrich levels with progress information and recommendation status
-      const levelsWithProgress: LevelWithProgress[] = levelsData.map(level => {
+      const levelsWithProgress: LevelWithProgress[] = approvedLevels.map(level => {
         const levelSubmissions = submissionsByLevel[level.id] || [];
         const hasPassedSubmission = levelSubmissions.some(s => s.status === 'passed');
         const hasAnySubmission = levelSubmissions.length > 0;

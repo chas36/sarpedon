@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/lib/supabase';
-import type { Level } from '@/shared/types';
+import type { Level, ModerationStatus } from '@/shared/types';
 
 export async function getLevels(): Promise<Level[]> {
   // RLS policies now handle class-based filtering automatically
@@ -85,6 +85,7 @@ export interface CreateLevelData {
   is_remedial?: boolean;
   remedial_for?: string[];
   allowed_classes?: string[]; // NULL or empty = available to all
+  moderation_status?: ModerationStatus; // Optional: 'approved' for teachers, 'pending_review' for editors
 }
 
 export async function createLevel(levelData: CreateLevelData, teacherId: string): Promise<Level> {

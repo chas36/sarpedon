@@ -4,12 +4,28 @@ import { generateUniqueLogin } from '../utils/loginGenerator';
 
 /**
  * Get all students (for teachers)
+ * Returns all profiles with role='student' (some may have is_editor=true)
  */
 export async function getAllStudents(): Promise<Profile[]> {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('role', 'student')
+    .order('last_name', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Get all student editors (students with is_editor=true)
+ */
+export async function getEditorStudents(): Promise<Profile[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('role', 'student')
+    .eq('is_editor', true)
     .order('last_name', { ascending: true });
 
   if (error) throw error;
@@ -298,4 +314,22 @@ export async function updateCredentials(
     .eq('id', id);
 
   if (profileError) throw profileError;
+}
+
+/**
+ * Toggle editor flag for a student
+ */
+export async function toggleEditorFlag(
+  id: string,
+  isEditor: boolean
+): Promise<Profile> {
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .update({ is_editor: isEditor })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return profile;
 }

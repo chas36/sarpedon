@@ -1,8 +1,10 @@
-export type Role = 'teacher' | 'student' | 'editor';
+export type Role = 'teacher' | 'student';
 
 export type Difficulty = number; // 1-10 scale, where 1 is easiest and 10 is hardest
 
 export type LevelStatus = 'not_started' | 'in_progress' | 'completed';
+
+export type ModerationStatus = 'draft' | 'pending_review' | 'approved' | 'rejected';
 
 export interface Profile {
   id: string;
@@ -11,6 +13,7 @@ export interface Profile {
   full_name?: string;
   class?: string;
   role: Role;
+  is_editor: boolean; // Students with this flag can create levels
   generated_login?: string;
   email?: string;
   generated_password?: string;
@@ -39,6 +42,10 @@ export interface Level {
   remedial_for?: string[];
   allowed_classes?: string[]; // NULL or empty = available to all
   created_by?: string;
+  moderation_status: ModerationStatus;
+  moderator_id?: string;
+  moderation_notes?: string;
+  moderated_at?: string;
   created_at: string;
   updated_at: string;
 }

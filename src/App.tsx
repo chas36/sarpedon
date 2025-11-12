@@ -14,10 +14,13 @@ import { StudentAnalyticsPage } from './features/teacher/pages/StudentAnalyticsP
 import { LevelAnalyticsPage } from './features/teacher/pages/LevelAnalyticsPage';
 import { ClassAnalyticsPage } from './features/teacher/pages/ClassAnalyticsPage';
 import { ProficiencyDashboardPage } from './features/teacher/pages/ProficiencyDashboardPage';
+import { ModerationPage } from './features/teacher/pages/ModerationPage';
+import { AuthorStatsPage } from './features/teacher/pages/AuthorStatsPage';
 import { TakeEntranceTestPage } from './features/entrance-test/pages/TakeEntranceTestPage';
 import { EntranceTestResultsPage } from './features/entrance-test/pages/EntranceTestResultsPage';
 import { EntranceTestManagePage } from './features/entrance-test/pages/EntranceTestManagePage';
 import { EntranceTestEditorPage } from './features/entrance-test/pages/EntranceTestEditorPage';
+import { EditorLevelsListPage, SimpleLevelEditorPage } from './features/editor/pages';
 import { useAuthStore } from './features/auth/store/authStore';
 import { getCurrentUser, getProfile } from './features/auth/api/authApi';
 import { Spinner } from './shared/components/ui';
@@ -93,7 +96,7 @@ function App() {
           }
         />
 
-        {/* Student routes */}
+        {/* Student routes (также используется редакторами) */}
         <Route
           path="/student/*"
           element={
@@ -106,17 +109,20 @@ function App() {
                   <Route path="progress" element={<ProgressPage />} />
                   <Route path="entrance-test/:testId" element={<TakeEntranceTestPage />} />
                   <Route path="competitions" element={<div>Соревнования - в разработке</div>} />
+                  {/* Editor routes - только для студентов с is_editor=true */}
+                  <Route path="editor/my-levels" element={<EditorLevelsListPage />} />
+                  <Route path="editor/levels/:id" element={<SimpleLevelEditorPage />} />
                 </Routes>
               </StudentLayout>
             </RoleGuard>
           }
         />
 
-        {/* Teacher routes */}
+        {/* Teacher routes - только для учителей */}
         <Route
           path="/teacher/*"
           element={
-            <RoleGuard allowedRoles={['teacher', 'editor']}>
+            <RoleGuard allowedRoles={['teacher']}>
               <TeacherLayout>
                 <Routes>
                   <Route index element={<TeacherDashboard />} />
@@ -131,6 +137,8 @@ function App() {
                   <Route path="entrance-tests" element={<EntranceTestManagePage />} />
                   <Route path="entrance-tests/results" element={<EntranceTestResultsPage />} />
                   <Route path="entrance-tests/:testId/edit" element={<EntranceTestEditorPage />} />
+                  <Route path="moderation" element={<ModerationPage />} />
+                  <Route path="author-stats" element={<AuthorStatsPage />} />
                   <Route path="competitions" element={<div>Соревнования - в разработке</div>} />
                   <Route path="statistics" element={<StatisticsPage />} />
                 </Routes>
@@ -166,7 +174,7 @@ function RoleRedirect() {
     return <Navigate to="/student" replace />;
   }
 
-  if (role === 'teacher' || role === 'editor') {
+  if (role === 'teacher') {
     return <Navigate to="/teacher" replace />;
   }
 

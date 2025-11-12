@@ -46,7 +46,7 @@ export function TopStudentsList({ students, showWeightedScore = false }: TopStud
 
           <div className="flex-1">
             <div className="font-medium text-admin-text">
-              {item.student.first_name} {item.student.last_name}
+              {item.student.last_name} {item.student.first_name}
             </div>
             <div className="text-xs text-admin-muted">
               {item.student.class}
