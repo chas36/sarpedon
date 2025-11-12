@@ -88,6 +88,12 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
             <Link to="/teacher/levels" className={navLinkClass('/teacher/levels')}>
               Уровни
             </Link>
+            <Link to="/teacher/moderation" className={navLinkClass('/teacher/moderation')}>
+              🔍 Модерация
+            </Link>
+            <Link to="/teacher/author-stats" className={navLinkClass('/teacher/author-stats')}>
+              📝 Авторы
+            </Link>
             <Link to="/teacher/entrance-tests" className={navLinkClass('/teacher/entrance-tests')}>
               Входные тесты
             </Link>

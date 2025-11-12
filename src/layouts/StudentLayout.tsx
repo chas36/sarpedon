@@ -100,6 +100,33 @@ export function StudentLayout({ children }: StudentLayoutProps) {
             >
               Соревнования
             </Link>
+
+            {/* Editor menu items - only visible if is_editor=true */}
+            {profile?.is_editor && (
+              <>
+                <div className="border-l border-learning-muted/20 h-6 mx-2" />
+                <Link
+                  to="/student/editor/my-levels"
+                  className={`text-sm font-medium transition-colors ${
+                    location.pathname.startsWith('/student/editor')
+                      ? 'text-purple-500 border-b-2 border-purple-500'
+                      : 'text-learning-text hover:text-purple-500'
+                  }`}
+                >
+                  ✏️ Мои задания
+                </Link>
+                <Link
+                  to="/student/editor/levels/new"
+                  className={`text-sm font-medium transition-colors ${
+                    location.pathname === '/student/editor/levels/new'
+                      ? 'text-purple-500 border-b-2 border-purple-500'
+                      : 'text-learning-text hover:text-purple-500'
+                  }`}
+                >
+                  ➕ Создать задание
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
