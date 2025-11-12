@@ -176,6 +176,13 @@ export function ModerationPage() {
                   <Button
                     size="sm"
                     variant="secondary"
+                    onClick={() => navigate(`/teacher/levels/${level.id}`)}
+                  >
+                    ✏️ Редактировать
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
                     onClick={() => setSelectedLevel(selectedLevel?.id === level.id ? null : level)}
                   >
                     {selectedLevel?.id === level.id ? 'Свернуть' : 'Подробнее'}

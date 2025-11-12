@@ -54,6 +54,13 @@ export function SimpleLevelEditorPage() {
         return;
       }
 
+      // Нельзя редактировать одобренные задания
+      if (level.moderation_status === 'approved') {
+        setError('Нельзя редактировать одобренное задание. Обратитесь к преподавателю.');
+        setTimeout(() => navigate('/student/editor/my-levels'), 2000);
+        return;
+      }
+
       setFormData({
         title: level.title,
         description: level.description,
