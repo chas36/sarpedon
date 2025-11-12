@@ -5,6 +5,7 @@ import {
   approveLevel,
   rejectLevel,
   getModerationStats,
+  getAllLevelsDebug,
   type LevelWithAuthor,
   type ModerationStats
 } from '../api/moderationApi';
@@ -30,6 +31,10 @@ export function ModerationPage() {
     try {
       setLoading(true);
       setError(null);
+
+      // DEBUG: First check all levels
+      await getAllLevelsDebug();
+
       const [levelsData, statsData] = await Promise.all([
         getPendingLevels(),
         getModerationStats()

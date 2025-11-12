@@ -6,6 +6,19 @@ export interface LevelWithAuthor extends Level {
 }
 
 /**
+ * DEBUG: Get all levels (for debugging)
+ */
+export async function getAllLevelsDebug() {
+  const { data, error } = await supabase
+    .from('levels')
+    .select('id, title, moderation_status, created_by')
+    .order('created_at', { ascending: false });
+
+  console.log('DEBUG: All levels in DB', { data, error });
+  return { data, error };
+}
+
+/**
  * Get all levels pending moderation
  */
 export async function getPendingLevels(): Promise<LevelWithAuthor[]> {
