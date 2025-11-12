@@ -5,6 +5,7 @@ import { RoleGuard } from './shared/components/guards/RoleGuard';
 import { StudentLayout } from './layouts/StudentLayout';
 import { TeacherLayout } from './layouts/TeacherLayout';
 import { LevelsListPage, SolveLevelPage, ProgressPage } from './features/learning/pages';
+import { TeacherDashboardPage } from './features/teacher/pages/TeacherDashboardPage';
 import { LevelsManagePage } from './features/teacher/pages/LevelsManagePage';
 import { LevelEditorPage } from './features/teacher/pages/LevelEditorPage';
 import { StudentsPage } from './features/teacher/pages/StudentsPage';
@@ -24,28 +25,6 @@ import { EditorLevelsListPage, SimpleLevelEditorPage } from './features/editor/p
 import { useAuthStore } from './features/auth/store/authStore';
 import { getCurrentUser, getProfile } from './features/auth/api/authApi';
 import { Spinner } from './shared/components/ui';
-
-function TeacherDashboard() {
-  return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-admin-text">Панель преподавателя</h1>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-admin-surface rounded-lg p-6 border border-admin-muted/10">
-          <h2 className="text-xl font-semibold text-admin-text mb-2">Студенты</h2>
-          <p className="text-admin-muted text-sm">Управление учениками и просмотр прогресса</p>
-        </div>
-        <div className="bg-admin-surface rounded-lg p-6 border border-admin-muted/10">
-          <h2 className="text-xl font-semibold text-admin-text mb-2">Уровни</h2>
-          <p className="text-admin-muted text-sm">Создание и редактирование заданий</p>
-        </div>
-        <div className="bg-admin-surface rounded-lg p-6 border border-admin-muted/10">
-          <h2 className="text-xl font-semibold text-admin-text mb-2">Статистика</h2>
-          <p className="text-admin-muted text-sm">Аналитика и отчеты</p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function App() {
   const { user, setUser, setProfile } = useAuthStore();
@@ -125,7 +104,7 @@ function App() {
             <RoleGuard allowedRoles={['teacher']}>
               <TeacherLayout>
                 <Routes>
-                  <Route index element={<TeacherDashboard />} />
+                  <Route index element={<TeacherDashboardPage />} />
                   <Route path="students" element={<StudentsPage />} />
                   <Route path="students/:id" element={<StudentDetailsPage />} />
                   <Route path="students/:id/analytics" element={<StudentAnalyticsPage />} />
