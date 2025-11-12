@@ -18,6 +18,21 @@ export async function getAllStudents(): Promise<Profile[]> {
 }
 
 /**
+ * Get all student editors (students with is_editor=true)
+ */
+export async function getEditorStudents(): Promise<Profile[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('role', 'student')
+    .eq('is_editor', true)
+    .order('last_name', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
  * Get students by class
  */
 export async function getStudentsByClass(className: string): Promise<Profile[]> {

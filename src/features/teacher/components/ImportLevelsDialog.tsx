@@ -1,18 +1,38 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { importLevelsFromJSON, type ImportResult } from '../api/moderationApi';
+import { getEditorStudents } from '../api/studentsApi';
 import { Button, Spinner } from '@/shared/components/ui';
+import type { Profile } from '@/shared/types';
 
 interface ImportLevelsDialogProps {
   onClose: () => void;
   onSuccess: () => void;
-  authorId: string | null;
 }
 
-export function ImportLevelsDialog({ onClose, onSuccess, authorId }: ImportLevelsDialogProps) {
+export function ImportLevelsDialog({ onClose, onSuccess }: ImportLevelsDialogProps) {
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [jsonText, setJsonText] = useState('');
+  const [selectedAuthorId, setSelectedAuthorId] = useState<string>(''); // '' = teacher (null), or student ID
+  const [editors, setEditors] = useState<Profile[]>([]);
+  const [loadingEditors, setLoadingEditors] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    loadEditors();
+  }, []);
+
+  async function loadEditors() {
+    try {
+      setLoadingEditors(true);
+      const editorsData = await getEditorStudents();
+      setEditors(editorsData);
+    } catch (err) {
+      console.error('Failed to load editors:', err);
+    } finally {
+      setLoadingEditors(false);
+    }
+  }
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -45,6 +65,9 @@ export function ImportLevelsDialog({ onClose, onSuccess, authorId }: ImportLevel
         alert('JSON должен содержать массив заданий');
         return;
       }
+
+      // Convert empty string to null (teacher import)
+      const authorId = selectedAuthorId === '' ? null : selectedAuthorId;
 
       // Import
       const importResult = await importLevelsFromJSON(levelsData, authorId);
@@ -85,6 +108,45 @@ export function ImportLevelsDialog({ onClose, onSuccess, authorId }: ImportLevel
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {/* Author Selection */}
+          <div>
+            <label className="block text-sm font-medium text-admin-text mb-2">
+              Автор заданий
+            </label>
+            {loadingEditors ? (
+              <div className="flex items-center gap-2 text-admin-muted">
+                <Spinner size="sm" />
+                <span className="text-sm">Загрузка списка редакторов...</span>
+              </div>
+            ) : (
+              <>
+                <select
+                  value={selectedAuthorId}
+                  onChange={(e) => setSelectedAuthorId(e.target.value)}
+                  className="w-full px-3 py-2 bg-admin-bg border border-admin-muted/20 rounded-lg text-admin-text focus:outline-none focus:ring-2 focus:ring-admin-accent"
+                >
+                  <option value="">Я (учитель) - задания будут одобрены сразу</option>
+                  {editors.map((editor) => (
+                    <option key={editor.id} value={editor.id}>
+                      {editor.first_name} {editor.last_name} ({editor.class || 'без класса'}) - задания на модерацию
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-admin-muted mt-2">
+                  {selectedAuthorId === '' ? (
+                    <span className="text-green-500">
+                      ✅ Задания будут импортированы со статусом <strong>"Одобрено"</strong> и сразу доступны студентам
+                    </span>
+                  ) : (
+                    <span className="text-yellow-500">
+                      ⏳ Задания будут импортированы со статусом <strong>"На модерации"</strong> и потребуют одобрения
+                    </span>
+                  )}
+                </p>
+              </>
+            )}
+          </div>
+
           {/* File Upload */}
           <div>
             <label className="block text-sm font-medium text-admin-text mb-2">

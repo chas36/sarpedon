@@ -184,6 +184,11 @@ export async function importLevelsFromJSON(
 
   let nextOrderIndex = (existingLevels?.[0]?.order_index || 0) + 1;
 
+  // Determine moderation status based on author
+  // If authorId is null (teacher import) -> approved
+  // If authorId is set (student editor) -> pending_review
+  const moderationStatus = authorId === null ? 'approved' : 'pending_review';
+
   for (const levelData of levelsData) {
     try {
       // Validate required fields
@@ -199,7 +204,9 @@ export async function importLevelsFromJSON(
         throw new Error('Сложность должна быть от 1 до 10');
       }
 
-      // Create level with pending_review status
+      // Create level
+      // Teacher imports: moderation_status = 'approved', created_by = null
+      // Student editor imports: moderation_status = 'pending_review', created_by = authorId
       const { error } = await supabase
         .from('levels')
         .insert({
@@ -214,7 +221,7 @@ export async function importLevelsFromJSON(
           test_cases: levelData.test_cases,
           hints: levelData.hints || [],
           order_index: nextOrderIndex++,
-          moderation_status: 'pending_review',
+          moderation_status: moderationStatus,
           created_by: authorId
         });
 

@@ -293,7 +293,6 @@ export function ModerationPage() {
             setShowImportDialog(false);
             loadData(); // Reload data after import
           }}
-          authorId={null} // null = no specific author (teacher import)
         />
       )}
     </div>
