@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getLevels, deleteLevel } from '@/features/learning/api/levelsApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button, Spinner } from '@/shared/components/ui';
+import { EditorRewardsCard } from '../components/EditorRewardsCard';
 import type { Level } from '@/shared/types';
 
 export function EditorLevelsListPage() {
@@ -90,6 +91,9 @@ export function EditorLevelsListPage() {
           ➕ Создать задание
         </Button>
       </div>
+
+      {/* Rewards Card */}
+      {profile?.id && <EditorRewardsCard editorId={profile.id} />}
 
       {levels.length === 0 ? (
         <div className="bg-learning-surface rounded-lg border border-learning-muted/10 p-12 text-center">

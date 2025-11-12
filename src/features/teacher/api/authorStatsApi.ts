@@ -10,6 +10,7 @@ export interface AuthorStats {
   total_submissions: number;
   passed_submissions: number;
   success_rate: number;
+  total_points_earned: number; // Points earned from approved levels
 }
 
 /**
@@ -63,6 +64,16 @@ export async function getAuthorStats(): Promise<AuthorStats[]> {
       ? Math.round((passed_submissions / total_submissions) * 100)
       : 0;
 
+    // Get total points earned from level creation rewards
+    const { data: rewards, error: rewardsError } = await supabase
+      .from('level_creation_rewards')
+      .select('points_awarded')
+      .eq('author_id', editor.id);
+
+    if (rewardsError) throw rewardsError;
+
+    const total_points_earned = rewards?.reduce((sum, r) => sum + r.points_awarded, 0) || 0;
+
     return {
       author: editor,
       total_levels,
@@ -71,7 +82,8 @@ export async function getAuthorStats(): Promise<AuthorStats[]> {
       rejected_levels,
       total_submissions,
       passed_submissions,
-      success_rate
+      success_rate,
+      total_points_earned
     };
   });
 

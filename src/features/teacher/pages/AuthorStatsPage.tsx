@@ -91,6 +91,7 @@ export function AuthorStatsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-admin-muted uppercase">Автор</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-admin-muted uppercase">Всего заданий</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-admin-muted uppercase">Одобрено</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-admin-muted uppercase">Получено баллов</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-admin-muted uppercase">На модерации</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-admin-muted uppercase">Отклонено</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-admin-muted uppercase">Попыток</th>
@@ -114,6 +115,12 @@ export function AuthorStatsPage() {
                     <span className="px-2 py-1 text-xs font-medium rounded bg-green-500/20 text-green-500">
                       {stat.approved_levels}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <span className="text-lg">🏆</span>
+                      <span className="text-sm font-bold text-purple-500">{stat.total_points_earned}</span>
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
                     <span className="px-2 py-1 text-xs font-medium rounded bg-yellow-500/20 text-yellow-500">
