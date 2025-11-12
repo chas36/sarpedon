@@ -140,3 +140,95 @@ export async function getModerationStats(): Promise<ModerationStats> {
 
   return stats;
 }
+
+/**
+ * Import levels from JSON
+ */
+export interface ImportLevelData {
+  title: string;
+  description: string;
+  educational_context?: string;
+  language: string;
+  difficulty: number;
+  topic?: string;
+  target_skills?: string[];
+  reference_solution: string;
+  test_cases: { input: string; output: string; description?: string }[];
+  hints?: string[];
+}
+
+export interface ImportResult {
+  success: boolean;
+  imported: number;
+  failed: number;
+  errors: { level: string; error: string }[];
+}
+
+export async function importLevelsFromJSON(
+  levelsData: ImportLevelData[],
+  authorId: string | null
+): Promise<ImportResult> {
+  const result: ImportResult = {
+    success: true,
+    imported: 0,
+    failed: 0,
+    errors: []
+  };
+
+  // Get max order_index
+  const { data: existingLevels } = await supabase
+    .from('levels')
+    .select('order_index')
+    .order('order_index', { ascending: false })
+    .limit(1);
+
+  let nextOrderIndex = (existingLevels?.[0]?.order_index || 0) + 1;
+
+  for (const levelData of levelsData) {
+    try {
+      // Validate required fields
+      if (!levelData.title || !levelData.description || !levelData.reference_solution) {
+        throw new Error('Отсутствуют обязательные поля: title, description, reference_solution');
+      }
+
+      if (!levelData.test_cases || levelData.test_cases.length === 0) {
+        throw new Error('Требуется хотя бы один тест-кейс');
+      }
+
+      if (levelData.difficulty < 1 || levelData.difficulty > 10) {
+        throw new Error('Сложность должна быть от 1 до 10');
+      }
+
+      // Create level with pending_review status
+      const { error } = await supabase
+        .from('levels')
+        .insert({
+          title: levelData.title,
+          description: levelData.description,
+          educational_context: levelData.educational_context,
+          language: levelData.language || 'python',
+          difficulty: levelData.difficulty,
+          topic: levelData.topic,
+          target_skills: levelData.target_skills || [],
+          reference_solution: levelData.reference_solution,
+          test_cases: levelData.test_cases,
+          hints: levelData.hints || [],
+          order_index: nextOrderIndex++,
+          moderation_status: 'pending_review',
+          created_by: authorId
+        });
+
+      if (error) throw error;
+      result.imported++;
+    } catch (err) {
+      result.failed++;
+      result.errors.push({
+        level: levelData.title || 'Без названия',
+        error: err instanceof Error ? err.message : 'Неизвестная ошибка'
+      });
+    }
+  }
+
+  result.success = result.failed === 0;
+  return result;
+}

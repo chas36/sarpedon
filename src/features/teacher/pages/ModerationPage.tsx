@@ -11,6 +11,7 @@ import {
 } from '../api/moderationApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button, Spinner } from '@/shared/components/ui';
+import { ImportLevelsDialog } from '../components/ImportLevelsDialog';
 
 export function ModerationPage() {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ export function ModerationPage() {
   const [processing, setProcessing] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<LevelWithAuthor | null>(null);
   const [rejectionNotes, setRejectionNotes] = useState('');
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -120,9 +122,14 @@ export function ModerationPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-admin-text">Модерация заданий</h1>
-        <p className="text-admin-muted mt-1">Проверяйте и одобряйте задания, созданные редакторами</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-admin-text">Модерация заданий</h1>
+          <p className="text-admin-muted mt-1">Проверяйте и одобряйте задания, созданные редакторами</p>
+        </div>
+        <Button onClick={() => setShowImportDialog(true)}>
+          📥 Импорт из JSON
+        </Button>
       </div>
 
       {/* Statistics */}
@@ -276,6 +283,18 @@ export function ModerationPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Import Dialog */}
+      {showImportDialog && (
+        <ImportLevelsDialog
+          onClose={() => setShowImportDialog(false)}
+          onSuccess={() => {
+            setShowImportDialog(false);
+            loadData(); // Reload data after import
+          }}
+          authorId={null} // null = no specific author (teacher import)
+        />
       )}
     </div>
   );
