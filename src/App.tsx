@@ -26,6 +26,7 @@ import { EditorLevelsListPage, SimpleLevelEditorPage } from './features/editor/p
 import { useAuthStore } from './features/auth/store/authStore';
 import { getCurrentUser, getProfile } from './features/auth/api/authApi';
 import { Spinner } from './shared/components/ui';
+import { ComingSoonPage } from './shared/components/ComingSoonPage';
 
 function App() {
   const { user, setUser, setProfile } = useAuthStore();
@@ -88,7 +89,17 @@ function App() {
                   <Route path="levels/:levelId/solve" element={<SolveLevelPage />} />
                   <Route path="progress" element={<ProgressPage />} />
                   <Route path="entrance-test/:testId" element={<TakeEntranceTestPage />} />
-                  <Route path="competitions" element={<div>Соревнования - в разработке</div>} />
+                  <Route
+                    path="competitions"
+                    element={
+                      <ComingSoonPage
+                        title="Командные соревнования"
+                        description="Здесь ты сможешь участвовать в командных турнирах, соревноваться с одноклассниками и зарабатывать награды! Функция уже близко к запуску."
+                        character="johnny"
+                        theme="learning"
+                      />
+                    }
+                  />
                   {/* Editor routes - только для студентов с is_editor=true */}
                   <Route path="editor/my-levels" element={<EditorLevelsListPage />} />
                   <Route path="editor/levels/:id" element={<SimpleLevelEditorPage />} />
@@ -119,7 +130,17 @@ function App() {
                   <Route path="entrance-tests/:testId/edit" element={<EntranceTestEditorPage />} />
                   <Route path="moderation" element={<ModerationPage />} />
                   <Route path="author-stats" element={<AuthorStatsPage />} />
-                  <Route path="competitions" element={<div>Соревнования - в разработке</div>} />
+                  <Route
+                    path="competitions"
+                    element={
+                      <ComingSoonPage
+                        title="Командные соревнования"
+                        description="Здесь вы сможете создавать турниры для ваших классов, формировать команды и отслеживать результаты. Функция находится в активной разработке."
+                        character="muskva"
+                        theme="admin"
+                      />
+                    }
+                  />
                   <Route path="statistics" element={<StatisticsPage />} />
                 </Routes>
               </TeacherLayout>
