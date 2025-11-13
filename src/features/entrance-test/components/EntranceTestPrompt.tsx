@@ -9,6 +9,11 @@ import {
 import type { EntranceTest } from '../api/entranceTestApi';
 
 export function EntranceTestPrompt() {
+  // TODO: Временно отключено из-за проблем с RPC endpoint complete_entrance_test
+  // После переработки системы входного тестирования - вернуть функциональность
+  return null;
+
+  /* DISABLED CODE - будет использоваться после исправления
   const { user, profile } = useAuthStore();
   const navigate = useNavigate();
   const [showPrompt, setShowPrompt] = useState(false);
@@ -109,4 +114,5 @@ export function EntranceTestPrompt() {
       </div>
     </div>
   );
+  */
 }

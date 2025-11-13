@@ -18,7 +18,8 @@ import { ClassAnalyticsPage } from './features/teacher/pages/ClassAnalyticsPage'
 import { ProficiencyDashboardPage } from './features/teacher/pages/ProficiencyDashboardPage';
 import { ModerationPage } from './features/teacher/pages/ModerationPage';
 import { AuthorStatsPage } from './features/teacher/pages/AuthorStatsPage';
-import { TakeEntranceTestPage } from './features/entrance-test/pages/TakeEntranceTestPage';
+// TODO: Entrance test pages temporarily disabled - will be re-enabled after refactoring
+// import { TakeEntranceTestPage } from './features/entrance-test/pages/TakeEntranceTestPage';
 import { EntranceTestResultsPage } from './features/entrance-test/pages/EntranceTestResultsPage';
 import { EntranceTestManagePage } from './features/entrance-test/pages/EntranceTestManagePage';
 import { EntranceTestEditorPage } from './features/entrance-test/pages/EntranceTestEditorPage';
@@ -88,7 +89,8 @@ function App() {
                   <Route path="levels" element={<LevelsListPage />} />
                   <Route path="levels/:levelId/solve" element={<SolveLevelPage />} />
                   <Route path="progress" element={<ProgressPage />} />
-                  <Route path="entrance-test/:testId" element={<TakeEntranceTestPage />} />
+                  {/* TODO: Временно отключено - требуется переработка системы входного тестирования */}
+                  {/* <Route path="entrance-test/:testId" element={<TakeEntranceTestPage />} /> */}
                   <Route
                     path="competitions"
                     element={
