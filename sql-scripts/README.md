@@ -9,6 +9,7 @@
 - **`apply_migrations_dashboard.sql`** - Применяет все основные миграции через Dashboard
 - **`apply_entrance_tests_migration.sql`** - Миграция системы входного тестирования
 - **`apply_recommendations_migration.sql`** - Миграция системы рекомендаций
+- **`apply_lesson_monitoring_migration.sql`** - 📍 **Миграция системы мониторинга уроков и оценок** - отслеживание активности учеников на уроке и выставление оценок по 5-балльной шкале
 
 ### Исправления
 
