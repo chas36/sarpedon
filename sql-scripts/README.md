@@ -15,6 +15,7 @@
 - **`fix_missing_functions.sql`** - Исправляет отсутствующие функции в БД
 - **`fix_skill_tracking_function.sql`** - Исправляет функцию отслеживания навыков
 - **`fix_complete_entrance_test.sql`** - Пересоздает функцию complete_entrance_test с правильными правами
+- **`fix_complete_entrance_test_return_type.sql`** - 🔧 **РЕШЕНИЕ 404 ОШИБКИ** - Изменяет возвращаемый тип с VOID на JSON для совместимости с PostgREST
 
 ## Проверка и отладка
 

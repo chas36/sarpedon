@@ -228,12 +228,20 @@ export async function submitAnswer(
 // Complete entrance test
 // ============================================
 
-export async function completeEntranceTest(attemptId: string): Promise<void> {
-  const { error } = await supabase.rpc('complete_entrance_test', {
+export interface CompleteTestResult {
+  success: boolean;
+  score: number;
+  proficiency_level: string;
+  proficiency_score: number;
+}
+
+export async function completeEntranceTest(attemptId: string): Promise<CompleteTestResult> {
+  const { data, error } = await supabase.rpc('complete_entrance_test', {
     p_attempt_id: attemptId
   });
 
   if (error) throw error;
+  return data as CompleteTestResult;
 }
 
 // ============================================
