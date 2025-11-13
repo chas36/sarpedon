@@ -119,22 +119,76 @@ AND routine_name LIKE '%lesson%';
 
 ## Проблемы и решения
 
-**Ошибка при выполнении миграции:**
-- Убедитесь, что вы используете правильную базу данных
-- Проверьте, что у вас есть права на создание таблиц и функций
-- Если миграция уже применена частично, выполните:
-  ```sql
-  DROP TABLE IF EXISTS lesson_grades CASCADE;
-  DROP TABLE IF EXISTS lesson_sessions CASCADE;
-  ```
-  И примените миграцию заново
+### Диагностика проблем
 
-**Ошибка "relation already exists":**
-- Миграция уже применена, проверьте таблицы с помощью команд из Шага 3
+Если после применения миграции все еще возникают ошибки, выполните диагностику:
 
-**По-прежнему 403 ошибка:**
-- Проверьте RLS политики:
-  ```sql
-  SELECT * FROM pg_policies WHERE tablename IN ('lesson_sessions', 'lesson_grades');
-  ```
-- Убедитесь, что вы авторизованы как учитель (role = 'teacher')
+1. Откройте файл `sql-scripts/diagnose_lesson_monitoring.sql`
+2. Скопируйте содержимое
+3. Выполните в SQL Editor
+4. Проверьте результаты каждой секции
+
+Скрипт покажет:
+- ✅ Какие таблицы созданы
+- ✅ Какие функции существуют
+- ✅ Какие RLS политики настроены
+- ✅ Какие права доступа выданы
+- ✅ Общую статистику объектов
+
+### Ошибка 403 Forbidden на lesson_sessions
+
+**Причина:** Таблица существует, но RLS политики блокируют доступ
+
+**Решение:**
+1. Проверьте, что вы авторизованы как учитель (role = 'teacher')
+2. Проверьте RLS политики:
+   ```sql
+   SELECT * FROM pg_policies WHERE tablename IN ('lesson_sessions', 'lesson_grades');
+   ```
+3. Если политик нет или они неправильные, заново выполните:
+   `sql-scripts/apply_lesson_monitoring_safe.sql`
+
+### Ошибка 404 Not Found на get_active_lesson_for_class
+
+**Причина:** Функция не создана ИЛИ PostgREST не перезагрузил схему
+
+**Решение:**
+1. Проверьте наличие функции:
+   ```sql
+   SELECT routine_name FROM information_schema.routines
+   WHERE routine_schema = 'public' AND routine_name = 'get_active_lesson_for_class';
+   ```
+
+2. Если функция существует, перезагрузите PostgREST:
+   - Выполните `sql-scripts/reload_postgrest_schema.sql`
+   - ИЛИ перейдите в Supabase Dashboard → Settings → API → **Restart API Server**
+
+3. Если функции нет, заново выполните миграцию:
+   - `sql-scripts/apply_lesson_monitoring_safe.sql`
+
+### Ошибка "relation already exists"
+
+- Используйте безопасную версию миграции: `apply_lesson_monitoring_safe.sql`
+- Она автоматически пропускает существующие объекты
+
+### Полная переустановка
+
+Если ничего не помогает, выполните полную переустановку:
+
+1. **Очистите старые объекты:**
+   ```sql
+   -- Выполните sql-scripts/cleanup_lesson_monitoring.sql
+   ```
+
+2. **Примените миграцию заново:**
+   ```sql
+   -- Выполните sql-scripts/apply_lesson_monitoring_safe.sql
+   ```
+
+3. **Перезагрузите PostgREST:**
+   ```sql
+   NOTIFY pgrst, 'reload schema';
+   ```
+   ИЛИ через Dashboard: Settings → API → Restart API Server
+
+4. **Обновите страницу приложения** (Ctrl+F5)
