@@ -2,10 +2,9 @@
  * Типы для AI feedback системы
  */
 
-/**
- * Уровень владения студента
- */
-export type ProficiencyLevel = 'beginner' | 'intermediate' | 'advanced';
+import type { ProficiencyLevel } from './proficiency.types';
+
+export type { ProficiencyLevel };
 
 /**
  * Профиль студента для адаптивных подсказок

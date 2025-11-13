@@ -1,7 +1,7 @@
-import { Level, UserProgress } from './database.types';
+import { Level, DBUserProgress } from './database.types';
 
 export interface LevelWithProgress extends Level {
-  progress?: UserProgress;
+  progress?: DBUserProgress;
 }
 
 export interface SubmissionResult {

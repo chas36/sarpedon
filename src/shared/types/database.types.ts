@@ -31,7 +31,7 @@ export interface Level {
   description: string;
   educational_context?: string;
   reference_solution: string;
-  test_cases: TestCase[];
+  test_cases: DBTestCase[];
   hints?: string[];
   difficulty: Difficulty;
   order_index: number;
@@ -50,13 +50,17 @@ export interface Level {
   updated_at: string;
 }
 
-export interface TestCase {
+// Note: TestCase is defined in execution.types.ts
+// Note: Submission is defined in submission.types.ts
+// Note: UserProgress is defined in submission.types.ts
+
+export interface DBTestCase {
   input: string;
   output: string;
   description?: string;
 }
 
-export interface UserProgress {
+export interface DBUserProgress {
   id: string;
   student_id: string;
   level_id: string;
@@ -70,7 +74,7 @@ export interface UserProgress {
   updated_at: string;
 }
 
-export interface Submission {
+export interface DBSubmission {
   id: string;
   user_id: string;
   level_id: string;
