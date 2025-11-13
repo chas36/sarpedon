@@ -88,6 +88,10 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
               <span>🏠</span>
               <span className="hidden md:inline">Главная</span>
             </Link>
+            <Link to="/teacher/lesson-monitor" className={navLinkClass('/teacher/lesson-monitor')}>
+              <span>📍</span>
+              <span className="hidden md:inline">Мониторинг урока</span>
+            </Link>
             <Link to="/teacher/students" className={navLinkClass('/teacher/students')}>
               <span>👥</span>
               <span className="hidden md:inline">Ученики</span>

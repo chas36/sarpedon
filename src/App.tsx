@@ -18,6 +18,7 @@ import { ClassAnalyticsPage } from './features/teacher/pages/ClassAnalyticsPage'
 import { ProficiencyDashboardPage } from './features/teacher/pages/ProficiencyDashboardPage';
 import { ModerationPage } from './features/teacher/pages/ModerationPage';
 import { AuthorStatsPage } from './features/teacher/pages/AuthorStatsPage';
+import { LessonMonitorPage } from './features/lessons/pages/LessonMonitorPage';
 // TODO: Entrance test pages temporarily disabled - will be re-enabled after refactoring
 // import { TakeEntranceTestPage } from './features/entrance-test/pages/TakeEntranceTestPage';
 import { EntranceTestResultsPage } from './features/entrance-test/pages/EntranceTestResultsPage';
@@ -119,6 +120,7 @@ function App() {
               <TeacherLayout>
                 <Routes>
                   <Route index element={<TeacherDashboardPage />} />
+                  <Route path="lesson-monitor" element={<LessonMonitorPage />} />
                   <Route path="students" element={<StudentsPage />} />
                   <Route path="students/:id" element={<StudentDetailsPage />} />
                   <Route path="students/:id/analytics" element={<StudentAnalyticsPage />} />
