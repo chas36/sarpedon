@@ -7,6 +7,7 @@ import {
   getLessonActivity,
   completeLessonSession,
   upsertGrade,
+  getAvailableClasses,
   type LessonSession,
   type StudentActivity
 } from '../api/lessonsApi';
@@ -16,20 +17,34 @@ export function LessonMonitorPage() {
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [activeLesson, setActiveLesson] = useState<LessonSession | null>(null);
   const [students, setStudents] = useState<StudentActivity[]>([]);
+  const [availableClasses, setAvailableClasses] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingClasses, setLoadingClasses] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
 
-  // Available classes (this could be fetched from profiles)
-  const availableClasses = ['5А', '5Б', '6А', '6Б', '7А', '7Б', '8А', '8Б', '9А', '9Б', '10А', '10Б', '11А', '11Б'];
-
   useEffect(() => {
+    loadAvailableClasses();
+
     return () => {
       if (refreshInterval) {
         clearInterval(refreshInterval);
       }
     };
   }, [refreshInterval]);
+
+  const loadAvailableClasses = async () => {
+    try {
+      setLoadingClasses(true);
+      const classes = await getAvailableClasses();
+      setAvailableClasses(classes);
+    } catch (err) {
+      console.error('Ошибка загрузки списка классов:', err);
+      setError('Не удалось загрузить список классов');
+    } finally {
+      setLoadingClasses(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedClass) {
@@ -172,32 +187,46 @@ export function LessonMonitorPage() {
             Выберите класс для начала урока
           </h2>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3 mb-6">
-            {availableClasses.map(cls => (
-              <button
-                key={cls}
-                onClick={() => setSelectedClass(cls)}
-                className={`
-                  px-4 py-3 rounded-lg font-medium transition-colors
-                  ${selectedClass === cls
-                    ? 'bg-admin-accent text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }
-                `}
-              >
-                {cls}
-              </button>
-            ))}
-          </div>
+          {loadingClasses ? (
+            <div className="flex justify-center items-center py-8">
+              <Spinner size="lg" />
+              <span className="ml-3 text-admin-muted">Загрузка классов...</span>
+            </div>
+          ) : availableClasses.length === 0 ? (
+            <div className="text-center py-8 text-admin-muted">
+              <p className="mb-2">Классы не найдены</p>
+              <p className="text-sm">В системе нет учеников или у них не указаны классы</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3 mb-6">
+                {availableClasses.map(cls => (
+                  <button
+                    key={cls}
+                    onClick={() => setSelectedClass(cls)}
+                    className={`
+                      px-4 py-3 rounded-lg font-medium transition-colors
+                      ${selectedClass === cls
+                        ? 'bg-admin-accent text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }
+                    `}
+                  >
+                    {cls}
+                  </button>
+                ))}
+              </div>
 
-          {selectedClass && (
-            <Button
-              onClick={handleStartLesson}
-              disabled={loading}
-              className="w-full"
-            >
-              {loading ? 'Создание урока...' : `Начать урок для класса ${selectedClass}`}
-            </Button>
+              {selectedClass && (
+                <Button
+                  onClick={handleStartLesson}
+                  disabled={loading}
+                  className="w-full"
+                >
+                  {loading ? 'Создание урока...' : `Начать урок для класса ${selectedClass}`}
+                </Button>
+              )}
+            </>
           )}
         </div>
       )}

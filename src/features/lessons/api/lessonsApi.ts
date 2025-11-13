@@ -69,6 +69,28 @@ export interface CreateGradeData {
 }
 
 // ============================================
+// Classes API
+// ============================================
+
+/**
+ * Get list of all classes that have students
+ */
+export async function getAvailableClasses(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('class')
+    .eq('role', 'student')
+    .not('class', 'is', null)
+    .order('class');
+
+  if (error) throw error;
+
+  // Get unique classes
+  const uniqueClasses = [...new Set(data.map(p => p.class))].filter(Boolean);
+  return uniqueClasses as string[];
+}
+
+// ============================================
 // Lesson Sessions API
 // ============================================
 
