@@ -182,7 +182,7 @@ export function LessonMonitorPage() {
 
       {/* Class Selection */}
       {!activeLesson && (
-        <div className="bg-white rounded-lg border border-admin-border p-6 mb-6">
+        <div className="bg-admin-surface rounded-lg border border-admin-border p-6 mb-6">
           <h2 className="text-xl font-semibold text-admin-text mb-4">
             Выберите класс для начала урока
           </h2>
@@ -208,7 +208,7 @@ export function LessonMonitorPage() {
                       px-4 py-3 rounded-lg font-medium transition-colors
                       ${selectedClass === cls
                         ? 'bg-admin-accent text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        : 'bg-admin-bg text-admin-text hover:bg-admin-accent/10 border border-admin-border'
                       }
                     `}
                   >
@@ -279,8 +279,8 @@ export function LessonMonitorPage() {
           </div>
 
           {/* Student Activity Table */}
-          <div className="bg-white rounded-lg border border-admin-border overflow-hidden">
-            <div className="px-6 py-4 bg-gray-50 border-b border-admin-border">
+          <div className="bg-admin-surface rounded-lg border border-admin-border overflow-hidden">
+            <div className="px-6 py-4 bg-admin-bg border-b border-admin-border">
               <h3 className="text-lg font-semibold text-admin-text">
                 Активность учеников ({students.length})
               </h3>
@@ -297,40 +297,40 @@ export function LessonMonitorPage() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-admin-border">
+                  <thead className="bg-admin-bg border-b border-admin-border">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-admin-muted uppercase tracking-wider">
                         Ученик
                       </th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-center text-xs font-medium text-admin-muted uppercase tracking-wider">
                         Попыток
                       </th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-center text-xs font-medium text-admin-muted uppercase tracking-wider">
                         Решено
                       </th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-center text-xs font-medium text-admin-muted uppercase tracking-wider">
                         Уровней
                       </th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-center text-xs font-medium text-admin-muted uppercase tracking-wider">
                         % успеха
                       </th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-center text-xs font-medium text-admin-muted uppercase tracking-wider">
                         Последняя активность
                       </th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-center text-xs font-medium text-admin-muted uppercase tracking-wider">
                         Оценка
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-admin-surface divide-y divide-admin-border">
                     {students.map(student => (
-                      <tr key={student.student_id} className="hover:bg-gray-50">
+                      <tr key={student.student_id} className="hover:bg-admin-bg/50">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-admin-text">
                             {student.student_last_name} {student.student_first_name}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-admin-text">
                           {student.total_submissions}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -338,12 +338,12 @@ export function LessonMonitorPage() {
                             {student.passed_submissions}
                           </span>
                           {student.failed_submissions > 0 && (
-                            <span className="text-sm text-gray-400 ml-1">
+                            <span className="text-sm text-admin-muted ml-1">
                               / {student.failed_submissions}
                             </span>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-admin-text">
                           {student.unique_levels_passed}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -355,7 +355,7 @@ export function LessonMonitorPage() {
                             {student.success_rate}%
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-admin-muted">
                           {student.last_activity
                             ? formatTime(student.last_activity)
                             : '—'
@@ -373,7 +373,7 @@ export function LessonMonitorPage() {
                               </span>
                               <button
                                 onClick={() => handleSetGrade(student.student_id, student.current_grade!)}
-                                className="text-xs text-gray-500 hover:text-gray-700"
+                                className="text-xs text-admin-muted hover:text-admin-text"
                                 title="Изменить оценку"
                               >
                                 ✏️
@@ -382,7 +382,7 @@ export function LessonMonitorPage() {
                           ) : (
                             <div className="flex items-center justify-center gap-1">
                               {student.suggested_grade && (
-                                <span className="text-xs text-gray-400 mr-2">
+                                <span className="text-xs text-admin-muted mr-2">
                                   → {student.suggested_grade}
                                 </span>
                               )}
@@ -394,7 +394,7 @@ export function LessonMonitorPage() {
                                     w-7 h-7 rounded text-sm font-medium transition-colors
                                     ${grade === student.suggested_grade
                                       ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                      : 'bg-admin-bg text-admin-text hover:bg-admin-accent/10 border border-admin-border'
                                     }
                                   `}
                                   title={grade === student.suggested_grade ? 'Рекомендуемая оценка' : ''}
