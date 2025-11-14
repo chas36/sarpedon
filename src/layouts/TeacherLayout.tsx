@@ -24,14 +24,19 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
   };
 
   const isActive = (path: string) => {
+    // Для главной страницы - точное совпадение
+    if (path === '/teacher') {
+      return location.pathname === '/teacher';
+    }
+    // Для остальных - начинается с пути
     return location.pathname.startsWith(path);
   };
 
   const navLinkClass = (path: string) =>
-    `text-sm font-medium transition-colors ${
+    `flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-all ${
       isActive(path)
-        ? 'text-admin-accent'
-        : 'text-admin-text hover:text-admin-accent'
+        ? 'text-admin-accent bg-admin-accent/10'
+        : 'text-admin-text hover:text-admin-accent hover:bg-admin-accent/5'
     }`;
 
   return (
@@ -41,7 +46,7 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <div className="flex items-center space-x-3">
+            <Link to="/teacher" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
               <img
                 src="/logo.png"
                 alt="Sarpedon"
@@ -53,7 +58,7 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
               <div className="text-sm text-admin-muted hidden sm:block">
                 Преподаватель
               </div>
-            </div>
+            </Link>
 
             {/* User Info */}
             <div className="flex items-center space-x-4">
@@ -78,30 +83,46 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
       {/* Navigation */}
       <nav className="bg-admin-surface border-b border-admin-muted/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8 h-12 items-center">
-            <Link to="/teacher/students" className={navLinkClass('/teacher/students')}>
-              Ученики
+          <div className="flex gap-2 py-2 overflow-x-auto">
+            <Link to="/teacher" className={navLinkClass('/teacher')}>
+              <span>🏠</span>
+              <span className="hidden md:inline">Главная</span>
             </Link>
-            <Link to="/teacher/proficiency-analytics" className={navLinkClass('/teacher/proficiency-analytics')}>
-              📊 Аналитика
+            <Link to="/teacher/lesson-monitor" className={navLinkClass('/teacher/lesson-monitor')}>
+              <span>📍</span>
+              <span className="hidden md:inline">Мониторинг урока</span>
+            </Link>
+            <Link to="/teacher/students" className={navLinkClass('/teacher/students')}>
+              <span>👥</span>
+              <span className="hidden md:inline">Ученики</span>
             </Link>
             <Link to="/teacher/levels" className={navLinkClass('/teacher/levels')}>
-              Уровни
+              <span>📝</span>
+              <span className="hidden md:inline">Уровни</span>
             </Link>
-            <Link to="/teacher/moderation" className={navLinkClass('/teacher/moderation')}>
-              🔍 Модерация
-            </Link>
-            <Link to="/teacher/author-stats" className={navLinkClass('/teacher/author-stats')}>
-              📝 Авторы
+            <Link to="/teacher/proficiency-analytics" className={navLinkClass('/teacher/proficiency-analytics')}>
+              <span>📊</span>
+              <span className="hidden md:inline">Аналитика</span>
             </Link>
             <Link to="/teacher/entrance-tests" className={navLinkClass('/teacher/entrance-tests')}>
-              Входные тесты
-            </Link>
-            <Link to="/teacher/competitions" className={navLinkClass('/teacher/competitions')}>
-              Соревнования
+              <span>✅</span>
+              <span className="hidden md:inline">Тесты</span>
             </Link>
             <Link to="/teacher/statistics" className={navLinkClass('/teacher/statistics')}>
-              Статистика
+              <span>📈</span>
+              <span className="hidden md:inline">Статистика</span>
+            </Link>
+            <Link to="/teacher/moderation" className={navLinkClass('/teacher/moderation')}>
+              <span>🛡️</span>
+              <span className="hidden md:inline">Модерация</span>
+            </Link>
+            <Link to="/teacher/author-stats" className={navLinkClass('/teacher/author-stats')}>
+              <span>✍️</span>
+              <span className="hidden md:inline">Авторы</span>
+            </Link>
+            <Link to="/teacher/competitions" className={navLinkClass('/teacher/competitions')}>
+              <span>🏆</span>
+              <span className="hidden md:inline">Соревнования</span>
             </Link>
           </div>
         </div>

@@ -249,62 +249,70 @@ export function LevelsListPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Entrance Test Prompt */}
       <EntranceTestPrompt />
 
       {/* Recommended Levels Card */}
       {user && <RecommendedLevelsCard studentId={user.id} />}
 
-      {/* Header with Progress */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-learning-text">Мои задания</h1>
-          <div className="text-sm text-learning-muted">
-            {completedLevels} / {totalLevels} выполнено
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-learning-text">Все задания</h1>
+        <p className="text-learning-muted mt-1">
+          Выбери задачу и прокачай свои навыки программирования
+        </p>
+      </div>
+
+      {/* Progress Overview - Compact Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-gradient-to-br from-green-500/20 to-green-600/5 border border-green-500/20 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-bold text-green-400">{completedLevels}</div>
+              <div className="text-xs text-learning-muted mt-0.5">Выполнено</div>
+            </div>
+            <div className="text-2xl opacity-60">✅</div>
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="bg-learning-surface border border-learning-muted/10 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">✅</span>
-                <div>
-                  <div className="text-sm font-medium text-green-400">{completedLevels} выполнено</div>
-                  <div className="text-xs text-learning-muted">Пройдено успешно</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">🔄</span>
-                <div>
-                  <div className="text-sm font-medium text-yellow-400">{inProgressLevels} в процессе</div>
-                  <div className="text-xs text-learning-muted">Есть попытки</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">⭕</span>
-                <div>
-                  <div className="text-sm font-medium text-learning-muted">{totalLevels - completedLevels - inProgressLevels} не начато</div>
-                  <div className="text-xs text-learning-muted">Ждут тебя</div>
-                </div>
-              </div>
+        <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/5 border border-yellow-500/20 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-bold text-yellow-400">{inProgressLevels}</div>
+              <div className="text-xs text-learning-muted mt-0.5">В процессе</div>
             </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold text-learning-accent">{progressPercentage}%</div>
-              <div className="text-xs text-learning-muted">прогресс</div>
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          <div className="relative w-full h-3 bg-learning-bg rounded-full overflow-hidden">
-            <div
-              className="absolute top-0 left-0 h-full bg-gradient-to-r from-green-500 to-learning-accent transition-all duration-500 rounded-full"
-              style={{ width: `${progressPercentage}%` }}
-            />
+            <div className="text-2xl opacity-60">🔄</div>
           </div>
         </div>
+
+        <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/5 border border-blue-500/20 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-bold text-blue-400">{totalLevels - completedLevels - inProgressLevels}</div>
+              <div className="text-xs text-learning-muted mt-0.5">Не начато</div>
+            </div>
+            <div className="text-2xl opacity-60">⭕</div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/5 border border-purple-500/20 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-bold text-purple-400">{progressPercentage}%</div>
+              <div className="text-xs text-learning-muted mt-0.5">Прогресс</div>
+            </div>
+            <div className="text-2xl opacity-60">📊</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="relative w-full h-2 bg-learning-surface rounded-full overflow-hidden border border-learning-muted/10">
+        <div
+          className="absolute top-0 left-0 h-full bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 transition-all duration-500"
+          style={{ width: `${progressPercentage}%` }}
+        />
       </div>
 
       {/* Adaptive Filter */}
@@ -329,53 +337,61 @@ export function LevelsListPage() {
       ) : (
         Object.entries(levelsByTopic).map(([topic, topicLevels]) => (
           <div key={topic} className="space-y-4">
-            <h2 className="text-xl font-semibold text-learning-text border-b border-learning-muted/10 pb-2">
-              {topic}
-            </h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold text-learning-text">
+                {topic}
+              </h2>
+              <div className="flex-1 h-px bg-gradient-to-r from-learning-muted/20 to-transparent" />
+              <span className="text-sm text-learning-muted">{topicLevels.length} заданий</span>
+            </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {topicLevels.map((level) => (
                 <Link
                   key={level.id}
                   to={`/student/levels/${level.id}/solve`}
-                  className={`bg-learning-surface border rounded-lg p-6 transition-all cursor-pointer group block relative overflow-hidden ${getCardBorderClass(level)}`}
+                  className={`bg-learning-surface border rounded-lg p-5 transition-all cursor-pointer group block relative overflow-hidden hover:scale-[1.02] ${getCardBorderClass(level)}`}
                 >
-                  {/* Recommended Badge */}
-                  {level.isRecommended && (
-                    <div className="absolute top-2 right-2 bg-learning-accent text-white text-xs px-2 py-1 rounded-full font-medium">
-                      🎯 Рекомендовано
-                    </div>
-                  )}
-
-                  {/* Status indicator in top-left corner */}
+                  {/* Top gradient bar */}
                   <div className={`absolute top-0 left-0 w-full h-1 ${
                     level.isRecommended
-                      ? 'bg-gradient-to-r from-learning-accent via-blue-500 to-learning-accent'
-                      : 'bg-gradient-to-r from-transparent via-learning-accent/20 to-transparent'
+                      ? 'bg-gradient-to-r from-learning-accent via-blue-400 to-learning-accent'
+                      : level.status === 'completed'
+                      ? 'bg-gradient-to-r from-green-500/50 to-green-600/50'
+                      : level.status === 'in_progress'
+                      ? 'bg-gradient-to-r from-yellow-500/50 to-yellow-600/50'
+                      : 'bg-gradient-to-r from-learning-muted/20 to-transparent'
                   }`} />
 
-                  <div className="space-y-4">
-                    {/* Header with title and difficulty */}
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-lg font-semibold text-learning-text group-hover:text-learning-accent transition-colors flex-1">
+                  <div className="space-y-3">
+                    {/* Header with title and badges */}
+                    <div className="flex items-start gap-2">
+                      <h3 className="text-base font-semibold text-learning-text group-hover:text-learning-accent transition-colors flex-1 leading-snug">
                         {level.title}
                       </h3>
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap ${getDifficultyBadgeClass(level.difficulty)}`}>
-                        {level.difficulty}/10
-                      </span>
+                      <div className="flex flex-col gap-1 items-end flex-shrink-0">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getDifficultyBadgeClass(level.difficulty)}`}>
+                          {level.difficulty}/10
+                        </span>
+                        {level.isRecommended && (
+                          <span className="text-xs px-2 py-0.5 bg-learning-accent text-white rounded-full font-medium flex items-center gap-1">
+                            🎯
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Status Badge */}
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-3 py-1 rounded-full border font-medium flex items-center gap-1.5 ${getStatusColor(level.status)}`}>
-                        <span>{getStatusIcon(level.status)}</span>
-                        {getStatusText(level.status)}
+                    {/* Status and Score */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-xs px-2 py-1 rounded-full border font-medium flex items-center gap-1 ${getStatusColor(level.status)}`}>
+                        <span className="text-sm">{getStatusIcon(level.status)}</span>
+                        <span className="hidden sm:inline">{getStatusText(level.status)}</span>
                       </span>
                       {level.bestScore !== undefined && level.bestScore > 0 && (
-                        <span className={`text-xs px-2 py-1 rounded font-medium ${
-                          level.bestScore >= 75 ? 'text-green-400 bg-green-500/10' :
-                          level.bestScore >= 50 ? 'text-yellow-400 bg-yellow-500/10' :
-                          'text-red-400 bg-red-500/10'
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                          level.bestScore >= 75 ? 'text-green-400 bg-green-500/10 border border-green-500/20' :
+                          level.bestScore >= 50 ? 'text-yellow-400 bg-yellow-500/10 border border-yellow-500/20' :
+                          'text-red-400 bg-red-500/10 border border-red-500/20'
                         }`}>
                           ⭐ {level.bestScore}%
                         </span>
@@ -383,34 +399,34 @@ export function LevelsListPage() {
                     </div>
 
                     {/* Description */}
-                    <p className="text-sm text-learning-muted line-clamp-2">
+                    <p className="text-sm text-learning-muted line-clamp-2 leading-relaxed">
                       {level.description}
                     </p>
 
                     {/* Skills */}
                     {level.target_skills && level.target_skills.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-1.5">
                         {level.target_skills.slice(0, 3).map((skill, idx) => (
                           <span
                             key={idx}
-                            className="text-xs px-2 py-1 bg-learning-accent/10 text-learning-accent rounded"
+                            className="text-xs px-2 py-0.5 bg-learning-accent/10 text-learning-accent rounded border border-learning-accent/20"
                           >
                             {skill}
                           </span>
                         ))}
                         {level.target_skills.length > 3 && (
-                          <span className="text-xs px-2 py-1 text-learning-muted">
+                          <span className="text-xs px-2 py-0.5 bg-learning-muted/10 text-learning-muted rounded border border-learning-muted/20">
                             +{level.target_skills.length - 3}
                           </span>
                         )}
                       </div>
                     )}
 
-                    {/* Attempts indicator */}
+                    {/* Last attempt */}
                     {level.lastSubmission && (
-                      <div className="text-xs text-learning-muted flex items-center gap-1 pt-2 border-t border-learning-muted/10">
+                      <div className="text-xs text-learning-muted flex items-center gap-1.5 pt-2 border-t border-learning-muted/10">
                         <span>🕒</span>
-                        Последняя попытка: {new Date(level.lastSubmission.submitted_at).toLocaleDateString('ru-RU')}
+                        <span>{new Date(level.lastSubmission.submitted_at).toLocaleDateString('ru-RU')}</span>
                       </div>
                     )}
                   </div>
