@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button, Spinner } from '@/shared/components/ui';
+import { supabase } from '@/shared/lib/supabase';
 import {
   createLessonSession,
   getActiveLessonForClass,
@@ -13,7 +14,7 @@ import {
 } from '../api/lessonsApi';
 
 export function LessonMonitorPage() {
-  const { user } = useAuthStore();
+  const { user, profile } = useAuthStore();
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [activeLesson, setActiveLesson] = useState<LessonSession | null>(null);
   const [students, setStudents] = useState<StudentActivity[]>([]);
@@ -22,6 +23,39 @@ export function LessonMonitorPage() {
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
+
+  // ВРЕМЕННАЯ ДИАГНОСТИКА - удалить после исправления
+  useEffect(() => {
+    const debugAuth = async () => {
+      console.group('🔍 LESSON MONITOR DEBUG');
+
+      // Информация о пользователе из store
+      console.log('User from store:', user);
+      console.log('Profile from store:', profile);
+
+      // Получаем текущую сессию и JWT токен
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Current session:', session);
+      console.log('JWT token:', session?.access_token);
+
+      if (session?.access_token) {
+        // Декодируем JWT токен (base64)
+        try {
+          const [, payload] = session.access_token.split('.');
+          const decoded = JSON.parse(atob(payload));
+          console.log('Decoded JWT payload:', decoded);
+          console.log('Role from user_metadata:', decoded.user_metadata?.role);
+          console.log('Role from app_metadata:', decoded.app_metadata?.role);
+        } catch (e) {
+          console.error('Failed to decode JWT:', e);
+        }
+      }
+
+      console.groupEnd();
+    };
+
+    debugAuth();
+  }, [user, profile]);
 
   useEffect(() => {
     loadAvailableClasses();
