@@ -8,5 +8,14 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src')
     }
+  },
+  preview: {
+    host: '0.0.0.0',
+    port: parseInt(process.env.PORT || '5173'),
+    strictPort: true,
+    allowedHosts: [
+      'sarpedon.onrender.com',
+      '.onrender.com' // Разрешить все поддомены onrender.com
+    ]
   }
 });
