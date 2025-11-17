@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { checkRateLimit, RATE_LIMITS } from '../_shared/ratelimit.ts'
 
 // ============================================
 // SECURITY FIX: Proper CORS configuration
@@ -35,6 +36,18 @@ serve(async (req) => {
     return new Response(null, {
       status: 204,
       headers: corsHeaders
+    })
+  }
+
+  // ============================================
+  // SECURITY FIX: Rate Limiting (CRITICAL-006)
+  // ============================================
+  // AI feedback uses Groq API (expensive) - strict limit (5 per minute)
+  const rateLimitResponse = await checkRateLimit(req, RATE_LIMITS.STRICT)
+  if (rateLimitResponse) {
+    return new Response(rateLimitResponse.body, {
+      status: rateLimitResponse.status,
+      headers: { ...corsHeaders, ...Object.fromEntries(rateLimitResponse.headers) },
     })
   }
 
