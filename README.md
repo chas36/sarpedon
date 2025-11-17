@@ -122,14 +122,19 @@ npm install
 ```env
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_GROQ_API_KEY=your_groq_api_key
 ```
 
-**Получение Groq API ключа (бесплатно!):**
+**Настройка Groq API ключа (бесплатно!):**
+
+⚠️ **ВАЖНО**: GROQ_API_KEY должен быть установлен в Supabase Edge Functions, НЕ в `.env` файле!
+
 1. Зарегистрируйтесь на [Groq Console](https://console.groq.com/)
 2. Перейдите в [API Keys](https://console.groq.com/keys)
 3. Создайте новый API ключ
-4. Скопируйте ключ в `.env` файл
+4. Откройте Supabase Dashboard → Settings → Edge Functions → Secrets
+5. Добавьте секрет:
+   - Name: `GROQ_API_KEY`
+   - Value: ваш ключ из Groq Console
 
 **Бесплатный tier Groq:**
 - 14,400 запросов в день
