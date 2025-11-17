@@ -1,14 +1,35 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+// ============================================
+// SECURITY FIX: Proper CORS configuration
+// ============================================
+const allowedOrigins = [
+  'https://sarpedon.app',
+  'https://www.sarpedon.app',
+  // Development origins (remove in production)
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+]
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || ''
+  return {
+    'Access-Control-Allow-Origin': allowedOrigins.includes(origin)
+      ? origin
+      : allowedOrigins[0],
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Credentials': 'true',
+  }
 }
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req)
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -18,10 +39,69 @@ serve(async (req) => {
   }
 
   try {
+    // ============================================
+    // SECURITY FIX: Authentication (all users)
+    // ============================================
+
+    // Check Authorization header
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          message: 'Missing authorization header'
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    // Create Supabase client with user token
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    )
+
+    // Verify user (любой authenticated user может использовать AI feedback)
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      console.error('Auth error:', userError)
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          message: 'Invalid or expired token'
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    // Log usage for monitoring
+    console.log('AI feedback request from user:', user.id)
+
+    // ============================================
+    // AI Feedback Logic
+    // ============================================
+
     // Get Groq API key from environment
     const groqApiKey = Deno.env.get('GROQ_API_KEY')
     if (!groqApiKey) {
-      throw new Error('GROQ_API_KEY is not set in environment variables')
+      console.error('GROQ_API_KEY is not set')
+      return new Response(
+        JSON.stringify({
+          error: 'Configuration error',
+          message: 'AI service is not configured'
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
     }
 
     // Get request body
@@ -29,13 +109,22 @@ serve(async (req) => {
 
     // Validate required fields
     if (!requestBody.model || !requestBody.messages) {
-      throw new Error('Missing required fields: model, messages')
+      return new Response(
+        JSON.stringify({
+          error: 'Validation failed',
+          message: 'Missing required fields: model, messages'
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
     }
 
     console.log('Proxying request to Groq API:', {
       model: requestBody.model,
       messagesCount: requestBody.messages?.length,
-      hasApiKey: !!groqApiKey
+      userId: user.id
     })
 
     // Forward request to Groq API
@@ -53,7 +142,18 @@ serve(async (req) => {
     if (!groqResponse.ok) {
       const errorData = await groqResponse.text()
       console.error('Groq API error:', errorData)
-      throw new Error(`Groq API error: ${groqResponse.status} ${groqResponse.statusText}`)
+
+      // Don't leak Groq API details to client
+      return new Response(
+        JSON.stringify({
+          error: 'AI service error',
+          message: 'Failed to get AI feedback. Please try again.'
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
     }
 
     // Get response from Groq
@@ -72,12 +172,13 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Edge function error:', error)
+    // SECURITY FIX: Don't leak internal error details
+    console.error('Internal error:', error)
 
     return new Response(
       JSON.stringify({
-        error: error.message || 'Internal server error',
-        details: error.toString()
+        error: 'Internal server error',
+        message: 'Failed to process AI feedback. Please try again.'
       }),
       {
         headers: {
