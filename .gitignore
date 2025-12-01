@@ -19,6 +19,9 @@ dist-ssr
 # Supabase
 .supabase/
 
+# Worktrees
+.worktrees/
+
 # Coverage
 coverage/
 

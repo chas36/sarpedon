@@ -1,9 +1,29 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { checkRateLimit, RATE_LIMITS } from '../_shared/ratelimit.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+// ============================================
+// SECURITY FIX: Proper CORS configuration
+// ============================================
+const allowedOrigins = [
+  'https://sarpedon.app',
+  'https://www.sarpedon.app',
+  // Development origins (remove in production)
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+]
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || ''
+  return {
+    'Access-Control-Allow-Origin': allowedOrigins.includes(origin)
+      ? origin
+      : allowedOrigins[0],
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Credentials': 'true',
+  }
 }
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
@@ -17,6 +37,8 @@ interface GenerateLevelRequest {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req)
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -25,11 +47,117 @@ serve(async (req) => {
     })
   }
 
+  // ============================================
+  // SECURITY FIX: Rate Limiting (CRITICAL-006)
+  // ============================================
+  // Generating levels uses Groq API (expensive) - strict limit (5 per minute)
+  const rateLimitResponse = await checkRateLimit(req, RATE_LIMITS.STRICT)
+  if (rateLimitResponse) {
+    return new Response(rateLimitResponse.body, {
+      status: rateLimitResponse.status,
+      headers: { ...corsHeaders, ...Object.fromEntries(rateLimitResponse.headers) },
+    })
+  }
+
   try {
+    // ============================================
+    // SECURITY FIX: Authentication & Authorization
+    // ============================================
+
+    // Check Authorization header
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          message: 'Missing authorization header'
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    // Create Supabase client with user token
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    )
+
+    // Verify user
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      console.error('Auth error:', userError)
+      return new Response(
+        JSON.stringify({
+          error: 'Unauthorized',
+          message: 'Invalid or expired token'
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    // Check user role - only teachers and editors can generate levels
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError || !profile) {
+      console.error('Profile fetch error:', profileError)
+      return new Response(
+        JSON.stringify({
+          error: 'Forbidden',
+          message: 'User profile not found'
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    // Only teachers and editors can generate levels
+    if (!['teacher', 'editor'].includes(profile.role)) {
+      return new Response(
+        JSON.stringify({
+          error: 'Forbidden',
+          message: 'Only teachers and editors can generate levels'
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    // Log usage for monitoring
+    console.log('Generate level request from user:', user.id, profile.role)
+
+    // ============================================
+    // Level Generation Logic
+    // ============================================
+
     // Get Groq API key from environment
     const groqApiKey = Deno.env.get('GROQ_API_KEY')
     if (!groqApiKey) {
-      throw new Error('GROQ_API_KEY is not set in environment variables')
+      console.error('GROQ_API_KEY is not set')
+      return new Response(
+        JSON.stringify({
+          error: 'Configuration error',
+          message: 'AI service is not configured'
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
     }
 
     // Get request body
@@ -37,7 +165,16 @@ serve(async (req) => {
 
     // Validate required fields
     if (!requestBody.topic || !requestBody.difficulty || !requestBody.language) {
-      throw new Error('Missing required fields: topic, difficulty, language')
+      return new Response(
+        JSON.stringify({
+          error: 'Validation failed',
+          message: 'Missing required fields: topic, difficulty, language'
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
     }
 
     const count = Math.min(requestBody.count || 1, 5) // Max 5 levels at once
@@ -46,7 +183,8 @@ serve(async (req) => {
       topic: requestBody.topic,
       difficulty: requestBody.difficulty,
       language: requestBody.language,
-      count
+      count,
+      userId: user.id
     })
 
     // Create prompt for level generation
@@ -82,14 +220,34 @@ serve(async (req) => {
     if (!groqResponse.ok) {
       const errorData = await groqResponse.text()
       console.error('Groq API error:', errorData)
-      throw new Error(`Groq API error: ${groqResponse.status} ${groqResponse.statusText}`)
+
+      // Don't leak Groq API details to client
+      return new Response(
+        JSON.stringify({
+          error: 'AI service error',
+          message: 'Failed to generate levels. Please try again.'
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
     }
 
     const groqData = await groqResponse.json()
     const generatedText = groqData.choices?.[0]?.message?.content
 
     if (!generatedText) {
-      throw new Error('No response from AI model')
+      return new Response(
+        JSON.stringify({
+          error: 'AI service error',
+          message: 'No response from AI model'
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
     }
 
     console.log('Generated text:', generatedText)
@@ -102,7 +260,11 @@ serve(async (req) => {
       // If JSON parsing fails, try to extract JSON from the text
       const jsonMatch = generatedText.match(/\[[\s\S]*\]/)
       if (jsonMatch) {
-        levels = JSON.parse(jsonMatch[0])
+        try {
+          levels = JSON.parse(jsonMatch[0])
+        } catch {
+          throw new Error('Failed to parse generated levels as JSON')
+        }
       } else {
         throw new Error('Failed to parse generated levels as JSON')
       }
@@ -124,13 +286,13 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Edge function error:', error)
+    // SECURITY FIX: Don't leak internal error details
+    console.error('Internal error:', error)
 
     return new Response(
       JSON.stringify({
-        success: false,
-        error: error.message || 'Internal server error',
-        details: error.toString()
+        error: 'Internal server error',
+        message: 'Failed to generate levels. Please try again.'
       }),
       {
         headers: {
