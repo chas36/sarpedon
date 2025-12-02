@@ -20,6 +20,7 @@ export interface UpdateTeacherSettingsPayload {
 
 /**
  * Get teacher settings for the current authenticated teacher
+ * Note: API keys are NOT returned for security reasons
  */
 export async function getTeacherSettings(): Promise<TeacherSettings | null> {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -30,7 +31,7 @@ export async function getTeacherSettings(): Promise<TeacherSettings | null> {
 
   const { data, error } = await supabase
     .from('teacher_settings')
-    .select('*')
+    .select('teacher_id, ai_provider, ai_model, groq_api_key, openrouter_api_key, ai_temperature, ai_max_tokens, ai_top_p, ai_enabled, ai_hints_enabled, feedback_style, last_connection_check, connection_status, connection_error, created_at, updated_at')
     .eq('teacher_id', user.id)
     .single();
 
@@ -38,7 +39,20 @@ export async function getTeacherSettings(): Promise<TeacherSettings | null> {
     throw error;
   }
 
-  return data || null;
+  // Return data with masked API keys (show only if they exist, not the actual values)
+  if (data) {
+    const hasGroqKey = !!data.groq_api_key;
+    const hasOpenrouterKey = !!data.openrouter_api_key;
+
+    return {
+      ...data,
+      // Don't return actual keys, only indicate if they exist
+      groq_api_key: hasGroqKey ? '***SAVED***' : undefined,
+      openrouter_api_key: hasOpenrouterKey ? '***SAVED***' : undefined
+    } as TeacherSettings;
+  }
+
+  return null;
 }
 
 /**
@@ -134,6 +148,9 @@ export async function updateConnectionStatus(
 
 /**
  * Test connection to AI provider
+ * If apiKey is not provided, the Edge Function will try to use:
+ * 1. Saved API key from teacher_settings table
+ * 2. Environment variable (GROQ_API_KEY or OPENROUTER_API_KEY)
  */
 export async function testAIConnection(
   provider: AIProvider,
@@ -142,7 +159,11 @@ export async function testAIConnection(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const { data, error } = await supabase.functions.invoke('test-ai-connection', {
-      body: { provider, apiKey, model }
+      body: {
+        provider,
+        apiKey, // Can be undefined - Edge Function will handle it
+        model
+      }
     });
 
     if (error) {

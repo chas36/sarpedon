@@ -26,6 +26,8 @@ export function TeacherSettingsPage() {
   const [aiModel, setAiModel] = useState('llama-3.1-8b-instant');
   const [groqApiKey, setGroqApiKey] = useState('');
   const [openrouterApiKey, setOpenrouterApiKey] = useState('');
+  const [hasGroqKey, setHasGroqKey] = useState(false); // Track if key is saved in DB
+  const [hasOpenrouterKey, setHasOpenrouterKey] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
   const [aiHintsEnabled, setAiHintsEnabled] = useState(true);
   const [aiTemperature, setAiTemperature] = useState(0.3);
@@ -47,8 +49,15 @@ export function TeacherSettingsPage() {
       // Populate form
       setAiProvider(data.ai_provider);
       setAiModel(data.ai_model);
-      setGroqApiKey(data.groq_api_key || '');
-      setOpenrouterApiKey(data.openrouter_api_key || '');
+
+      // Check if keys are saved (they come as '***SAVED***' if they exist)
+      setHasGroqKey(data.groq_api_key === '***SAVED***');
+      setHasOpenrouterKey(data.openrouter_api_key === '***SAVED***');
+
+      // Don't populate actual keys (for security)
+      setGroqApiKey('');
+      setOpenrouterApiKey('');
+
       setAiEnabled(data.ai_enabled);
       setAiHintsEnabled(data.ai_hints_enabled);
       setAiTemperature(data.ai_temperature);
@@ -97,14 +106,10 @@ export function TeacherSettingsPage() {
       setTesting(true);
       setError(null);
 
+      // Use API key from form, or undefined to use saved key from database/environment
       const apiKey = aiProvider === 'groq' ? groqApiKey : openrouterApiKey;
 
-      if (!apiKey) {
-        setError('Пожалуйста, введите API ключ перед проверкой соединения');
-        return;
-      }
-
-      const result = await testAIConnection(aiProvider, apiKey, aiModel);
+      const result = await testAIConnection(aiProvider, apiKey || undefined, aiModel);
 
       if (result.success) {
         await updateConnectionStatus('connected');
@@ -150,6 +155,23 @@ export function TeacherSettingsPage() {
           <p className="text-gray-400 mt-2">
             Настройте AI модели и параметры для обратной связи студентам
           </p>
+          {settings && (
+            <div className="mt-3 flex items-center gap-2">
+              <span className="text-sm text-gray-500">Текущая модель:</span>
+              <span className="px-3 py-1 bg-primary-500/20 border border-primary-500/50 rounded-full text-primary-400 text-sm font-medium">
+                {settings.ai_provider === 'groq' ? '⚡ Groq' : '🌐 OpenRouter'} · {settings.ai_model}
+              </span>
+              {settings.ai_enabled ? (
+                <span className="px-2 py-1 bg-green-500/20 border border-green-500/50 rounded-full text-green-400 text-xs">
+                  ✓ Активен
+                </span>
+              ) : (
+                <span className="px-2 py-1 bg-red-500/20 border border-red-500/50 rounded-full text-red-400 text-xs">
+                  ✗ Выключен
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <button
           onClick={() => navigate('/teacher')}
@@ -223,17 +245,31 @@ export function TeacherSettingsPage() {
           <label className="block text-sm font-medium text-gray-200">
             API Ключ {aiProvider === 'groq' ? 'Groq' : 'OpenRouter'}
           </label>
-          <input
-            type="password"
-            value={aiProvider === 'groq' ? groqApiKey : openrouterApiKey}
-            onChange={(e) =>
-              aiProvider === 'groq'
-                ? setGroqApiKey(e.target.value)
-                : setOpenrouterApiKey(e.target.value)
-            }
-            placeholder={`Введите ${aiProvider === 'groq' ? 'Groq' : 'OpenRouter'} API ключ`}
-            className="w-full px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
+          <div className="relative">
+            <input
+              type="password"
+              value={aiProvider === 'groq' ? groqApiKey : openrouterApiKey}
+              onChange={(e) =>
+                aiProvider === 'groq'
+                  ? setGroqApiKey(e.target.value)
+                  : setOpenrouterApiKey(e.target.value)
+              }
+              placeholder={
+                (aiProvider === 'groq' && hasGroqKey) || (aiProvider === 'openrouter' && hasOpenrouterKey)
+                  ? 'Ключ сохранен (оставьте пустым для использования сохраненного)'
+                  : `Введите ${aiProvider === 'groq' ? 'Groq' : 'OpenRouter'} API ключ`
+              }
+              className="w-full px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            {((aiProvider === 'groq' && hasGroqKey) || (aiProvider === 'openrouter' && hasOpenrouterKey)) && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-green-400 text-xs flex items-center gap-1">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                Сохранен
+              </span>
+            )}
+          </div>
           <p className="text-xs text-gray-400">
             {aiProvider === 'groq' ? (
               <>
@@ -272,10 +308,12 @@ export function TeacherSettingsPage() {
 
         {/* AI Toggles */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium text-gray-200">
+          <div className="flex items-center justify-between p-4 bg-dark-700/50 rounded-lg border border-dark-600">
+            <div className="flex-1">
+              <div className="text-sm font-medium text-gray-200 flex items-center gap-2">
                 Включить AI помощника
+                {aiEnabled && <span className="text-green-400 text-xs">● Включен</span>}
+                {!aiEnabled && <span className="text-red-400 text-xs">● Выключен</span>}
               </div>
               <div className="text-xs text-gray-400 mt-1">
                 Разрешить студентам получать AI обратную связь
@@ -283,36 +321,44 @@ export function TeacherSettingsPage() {
             </div>
             <button
               onClick={() => setAiEnabled(!aiEnabled)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                aiEnabled ? 'bg-primary-600' : 'bg-dark-600'
+              className={`relative inline-flex h-7 w-14 items-center rounded-full transition-all duration-200 ${
+                aiEnabled
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'bg-gray-600 hover:bg-gray-500'
               }`}
+              aria-label="Toggle AI helper"
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  aiEnabled ? 'translate-x-6' : 'translate-x-1'
+                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-lg transition-transform duration-200 ${
+                  aiEnabled ? 'translate-x-8' : 'translate-x-1'
                 }`}
               />
             </button>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium text-gray-200">
+          <div className="flex items-center justify-between p-4 bg-dark-700/50 rounded-lg border border-dark-600">
+            <div className="flex-1">
+              <div className="text-sm font-medium text-gray-200 flex items-center gap-2">
                 Подсказки AI
+                {aiHintsEnabled && <span className="text-green-400 text-xs">● Включены</span>}
+                {!aiHintsEnabled && <span className="text-gray-500 text-xs">● Выключены</span>}
               </div>
               <div className="text-xs text-gray-400 mt-1">
-                Показывать кнопку "Получить подсказку"
+                Показывать кнопку "Получить подсказку" студентам
               </div>
             </div>
             <button
               onClick={() => setAiHintsEnabled(!aiHintsEnabled)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                aiHintsEnabled ? 'bg-primary-600' : 'bg-dark-600'
+              className={`relative inline-flex h-7 w-14 items-center rounded-full transition-all duration-200 ${
+                aiHintsEnabled
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'bg-gray-600 hover:bg-gray-500'
               }`}
+              aria-label="Toggle AI hints"
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  aiHintsEnabled ? 'translate-x-6' : 'translate-x-1'
+                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-lg transition-transform duration-200 ${
+                  aiHintsEnabled ? 'translate-x-8' : 'translate-x-1'
                 }`}
               />
             </button>

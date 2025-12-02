@@ -33,51 +33,69 @@ CREATE TABLE IF NOT EXISTS teacher_settings (
 );
 
 -- Create index for faster lookups
-CREATE INDEX idx_teacher_settings_teacher_id ON teacher_settings(teacher_id);
-CREATE INDEX idx_teacher_settings_ai_provider ON teacher_settings(ai_provider);
+CREATE INDEX IF NOT EXISTS idx_teacher_settings_teacher_id ON teacher_settings(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_teacher_settings_ai_provider ON teacher_settings(ai_provider);
 
 -- Add RLS policies
 ALTER TABLE teacher_settings ENABLE ROW LEVEL SECURITY;
 
 -- Teachers can only view and update their own settings
-CREATE POLICY "Teachers can view own settings"
-  ON teacher_settings
-  FOR SELECT
-  TO authenticated
-  USING (
-    teacher_id = auth.uid() AND
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'teacher'
-    )
-  );
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'teacher_settings' AND policyname = 'Teachers can view own settings'
+  ) THEN
+    CREATE POLICY "Teachers can view own settings"
+      ON teacher_settings
+      FOR SELECT
+      TO authenticated
+      USING (
+        teacher_id = auth.uid() AND
+        EXISTS (
+          SELECT 1 FROM profiles
+          WHERE profiles.id = auth.uid()
+          AND profiles.role = 'teacher'
+        )
+      );
+  END IF;
+END $$;
 
-CREATE POLICY "Teachers can insert own settings"
-  ON teacher_settings
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    teacher_id = auth.uid() AND
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'teacher'
-    )
-  );
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'teacher_settings' AND policyname = 'Teachers can insert own settings'
+  ) THEN
+    CREATE POLICY "Teachers can insert own settings"
+      ON teacher_settings
+      FOR INSERT
+      TO authenticated
+      WITH CHECK (
+        teacher_id = auth.uid() AND
+        EXISTS (
+          SELECT 1 FROM profiles
+          WHERE profiles.id = auth.uid()
+          AND profiles.role = 'teacher'
+        )
+      );
+  END IF;
+END $$;
 
-CREATE POLICY "Teachers can update own settings"
-  ON teacher_settings
-  FOR UPDATE
-  TO authenticated
-  USING (
-    teacher_id = auth.uid() AND
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'teacher'
-    )
-  );
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'teacher_settings' AND policyname = 'Teachers can update own settings'
+  ) THEN
+    CREATE POLICY "Teachers can update own settings"
+      ON teacher_settings
+      FOR UPDATE
+      TO authenticated
+      USING (
+        teacher_id = auth.uid() AND
+        EXISTS (
+          SELECT 1 FROM profiles
+          WHERE profiles.id = auth.uid()
+          AND profiles.role = 'teacher'
+        )
+      );
+  END IF;
+END $$;
 
 -- Create trigger to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_teacher_settings_updated_at()
@@ -88,6 +106,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS teacher_settings_updated_at ON teacher_settings;
 CREATE TRIGGER teacher_settings_updated_at
   BEFORE UPDATE ON teacher_settings
   FOR EACH ROW

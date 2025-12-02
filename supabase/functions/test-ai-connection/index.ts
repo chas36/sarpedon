@@ -73,11 +73,47 @@ serve(async (req) => {
     // Get request body
     const { provider, apiKey, model } = await req.json()
 
-    if (!provider || !apiKey) {
+    if (!provider) {
       return new Response(
         JSON.stringify({
           success: false,
-          error: 'Missing provider or apiKey'
+          error: 'Missing provider'
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    // If no apiKey provided, try to get from database
+    let finalApiKey = apiKey
+    if (!finalApiKey) {
+      const { data: settings, error: settingsError } = await supabase
+        .from('teacher_settings')
+        .select(provider === 'groq' ? 'groq_api_key' : 'openrouter_api_key')
+        .eq('teacher_id', user.id)
+        .single()
+
+      if (settingsError) {
+        console.error('Error fetching settings:', settingsError)
+      } else if (settings) {
+        finalApiKey = provider === 'groq' ? settings.groq_api_key : settings.openrouter_api_key
+      }
+    }
+
+    // If still no apiKey, use environment variable
+    if (!finalApiKey) {
+      finalApiKey = provider === 'groq'
+        ? Deno.env.get('GROQ_API_KEY')
+        : Deno.env.get('OPENROUTER_API_KEY')
+    }
+
+    if (!finalApiKey) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `No API key found for ${provider}. Please provide an API key or set it in your settings.`
         }),
         {
           status: 400,
@@ -89,7 +125,7 @@ serve(async (req) => {
     // Test connection based on provider
     let testUrl: string
     const headers: Record<string, string> = {
-      'Authorization': `Bearer ${apiKey}`,
+      'Authorization': `Bearer ${finalApiKey}`,
       'Content-Type': 'application/json',
     }
 
