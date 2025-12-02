@@ -1,13 +1,17 @@
 import { supabase } from '@/shared/lib/supabase';
 import type { AIFeedbackRequest, AIFeedbackResponse, ProficiencyLevel } from '@/shared/types';
+import { getOrInitializeTeacherSettings } from './teacherSettingsApi';
 
 /**
- * Groq API Integration via Supabase Edge Function
+ * AI Feedback Integration via Supabase Edge Function
+ * Supports multiple AI providers: Groq, OpenRouter
  * С адаптивными промптами на основе proficiency level
  */
-const USE_AI = true;
-const GROQ_MODEL = 'llama-3.1-8b-instant';
-const AI_TEMPERATURE = 0.3;
+
+// Default fallback values if teacher settings are not available
+const DEFAULT_AI_PROVIDER = 'groq';
+const DEFAULT_MODEL = 'llama-3.1-8b-instant';
+const DEFAULT_AI_TEMPERATURE = 0.3;
 
 /**
  * Получить стиль подсказок в зависимости от уровня студента
@@ -404,43 +408,66 @@ export async function getAIFeedback(request: AIFeedbackRequest): Promise<AIFeedb
     };
   }
 
-  // Если AI временно отключен
-  if (!USE_AI) {
-    return {
-      success: false,
-      feedback: 'AI временно недоступен, но ты можешь попробовать сам!',
-      suggestions: [
-        'Проверь, правильно ли ты понял условие задачи',
-        'Убедись, что твой код выводит результат в нужном формате',
-        'Попробуй протестировать код с примерами из задания'
-      ],
-      error: 'AI disabled'
-    };
-  }
-
   try {
+    // Get teacher settings for the student's teacher or use defaults
+    let teacherSettings;
+    try {
+      // For now, we get settings for the current user
+      // In future, we should get the teacher assigned to this student's class
+      teacherSettings = await getOrInitializeTeacherSettings();
+    } catch (err) {
+      console.warn('Could not fetch teacher settings, using defaults:', err);
+      teacherSettings = null;
+    }
+
+    // Check if AI is enabled
+    if (teacherSettings && !teacherSettings.ai_enabled) {
+      return {
+        success: false,
+        feedback: 'AI временно недоступен, но ты можешь попробовать сам!',
+        suggestions: [
+          'Проверь, правильно ли ты понял условие задачи',
+          'Убедись, что твой код выводит результат в нужном формате',
+          'Попробуй протестировать код с примерами из задания'
+        ],
+        error: 'AI disabled by teacher'
+      };
+    }
+
     const prompt = createAdaptiveFeedbackPrompt(request);
 
     if (!prompt) {
       throw new Error('Failed to create prompt');
     }
 
+    // Use settings from teacher or defaults
+    const aiProvider = teacherSettings?.ai_provider || DEFAULT_AI_PROVIDER;
+    const aiModel = teacherSettings?.ai_model || DEFAULT_MODEL;
+    const aiTemperature = teacherSettings?.ai_temperature || DEFAULT_AI_TEMPERATURE;
+    const aiMaxTokens = teacherSettings?.ai_max_tokens || 1000;
+    const aiTopP = teacherSettings?.ai_top_p || 0.9;
+
     console.log('Calling Edge Function ai-feedback (adaptive mode)');
+    console.log('AI Provider:', aiProvider);
+    console.log('AI Model:', aiModel);
     console.log('Student proficiency:', request.student_profile?.proficiency_level || 'unknown');
 
     // Вызываем Edge Function
     const { data, error } = await supabase.functions.invoke('ai-feedback', {
       body: {
-        model: GROQ_MODEL,
+        provider: aiProvider,
+        model: aiModel,
         messages: [
           {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: AI_TEMPERATURE,
-        max_tokens: 1000,  // Увеличено для более детальных ответов
-        top_p: 0.9
+        temperature: aiTemperature,
+        max_tokens: aiMaxTokens,
+        top_p: aiTopP,
+        // Include API keys if teacher has custom keys
+        apiKey: aiProvider === 'groq' ? teacherSettings?.groq_api_key : teacherSettings?.openrouter_api_key
       }
     });
 

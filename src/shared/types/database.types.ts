@@ -85,3 +85,28 @@ export interface DBSubmission {
   created_at: string;
   updated_at: string;
 }
+
+export type AIProvider = 'groq' | 'openrouter';
+
+export type FeedbackStyle = 'adaptive' | 'detailed' | 'concise' | 'minimal';
+
+export type ConnectionStatus = 'connected' | 'disconnected' | 'error' | 'unknown';
+
+export interface TeacherSettings {
+  teacher_id: string;
+  ai_provider: AIProvider;
+  ai_model: string;
+  groq_api_key?: string;
+  openrouter_api_key?: string;
+  ai_temperature: number;
+  ai_max_tokens: number;
+  ai_top_p: number;
+  ai_enabled: boolean;
+  ai_hints_enabled: boolean;
+  feedback_style: FeedbackStyle;
+  last_connection_check?: string;
+  connection_status: ConnectionStatus;
+  connection_error?: string;
+  created_at: string;
+  updated_at: string;
+}

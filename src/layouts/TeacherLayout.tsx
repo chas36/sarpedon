@@ -124,6 +124,10 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
               <span>🏆</span>
               <span className="hidden md:inline">Соревнования</span>
             </Link>
+            <Link to="/teacher/settings" className={navLinkClass('/teacher/settings')}>
+              <span>⚙️</span>
+              <span className="hidden md:inline">Настройки</span>
+            </Link>
           </div>
         </div>
       </nav>

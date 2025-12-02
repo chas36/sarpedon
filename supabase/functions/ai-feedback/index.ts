@@ -27,6 +27,7 @@ function getCorsHeaders(req: Request): Record<string, string> {
 }
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
@@ -98,24 +99,8 @@ serve(async (req) => {
     console.log('AI feedback request from user:', user.id)
 
     // ============================================
-    // AI Feedback Logic
+    // AI Feedback Logic - Multi-Provider Support
     // ============================================
-
-    // Get Groq API key from environment
-    const groqApiKey = Deno.env.get('GROQ_API_KEY')
-    if (!groqApiKey) {
-      console.error('GROQ_API_KEY is not set')
-      return new Response(
-        JSON.stringify({
-          error: 'Configuration error',
-          message: 'AI service is not configured'
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
 
     // Get request body
     const requestBody = await req.json()
@@ -134,29 +119,81 @@ serve(async (req) => {
       )
     }
 
-    console.log('Proxying request to Groq API:', {
+    // Get provider (default to groq for backwards compatibility)
+    const provider = requestBody.provider || 'groq'
+
+    // Get API key - either from request body (teacher custom key) or environment
+    let apiKey: string | undefined
+    let apiUrl: string
+
+    if (provider === 'groq') {
+      apiKey = requestBody.apiKey || Deno.env.get('GROQ_API_KEY')
+      apiUrl = GROQ_API_URL
+    } else if (provider === 'openrouter') {
+      apiKey = requestBody.apiKey || Deno.env.get('OPENROUTER_API_KEY')
+      apiUrl = OPENROUTER_API_URL
+    } else {
+      return new Response(
+        JSON.stringify({
+          error: 'Invalid provider',
+          message: `Provider '${provider}' is not supported. Use 'groq' or 'openrouter'.`
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    if (!apiKey) {
+      console.error(`${provider.toUpperCase()}_API_KEY is not set`)
+      return new Response(
+        JSON.stringify({
+          error: 'Configuration error',
+          message: 'AI service is not configured'
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    console.log(`Proxying request to ${provider.toUpperCase()} API:`, {
+      provider,
       model: requestBody.model,
       messagesCount: requestBody.messages?.length,
       userId: user.id
     })
 
-    // Forward request to Groq API
-    const groqResponse = await fetch(GROQ_API_URL, {
+    // Prepare request payload (remove provider and apiKey fields)
+    const { provider: _, apiKey: __, ...aiRequestBody } = requestBody
+
+    // Add OpenRouter-specific headers if using OpenRouter
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    }
+
+    if (provider === 'openrouter') {
+      headers['HTTP-Referer'] = 'https://sarpedon.app' // Required by OpenRouter
+      headers['X-Title'] = 'Sarpedon Learning Platform' // Optional, for OpenRouter analytics
+    }
+
+    // Forward request to AI provider
+    const aiResponse = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${groqApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody)
+      headers,
+      body: JSON.stringify(aiRequestBody)
     })
 
-    console.log('Groq API response status:', groqResponse.status)
+    console.log(`${provider.toUpperCase()} API response status:`, aiResponse.status)
 
-    if (!groqResponse.ok) {
-      const errorData = await groqResponse.text()
-      console.error('Groq API error:', errorData)
+    if (!aiResponse.ok) {
+      const errorData = await aiResponse.text()
+      console.error(`${provider.toUpperCase()} API error:`, errorData)
 
-      // Don't leak Groq API details to client
+      // Don't leak API details to client
       return new Response(
         JSON.stringify({
           error: 'AI service error',
@@ -169,12 +206,12 @@ serve(async (req) => {
       )
     }
 
-    // Get response from Groq
-    const groqData = await groqResponse.json()
+    // Get response from AI provider
+    const aiData = await aiResponse.json()
 
     // Return response to client
     return new Response(
-      JSON.stringify(groqData),
+      JSON.stringify(aiData),
       {
         headers: {
           ...corsHeaders,
