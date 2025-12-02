@@ -4,6 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const allowedOrigins = [
   'https://sarpedon.app',
   'https://www.sarpedon.app',
+  'https://sarpedon.onrender.com', // Render deployment
   'http://localhost:5173',
   'http://localhost:3000',
   'http://127.0.0.1:5173',

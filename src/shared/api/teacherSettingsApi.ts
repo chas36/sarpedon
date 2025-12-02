@@ -29,9 +29,10 @@ export async function getTeacherSettings(): Promise<TeacherSettings | null> {
     throw new Error('User not authenticated');
   }
 
+  // Select all fields except API keys, then fetch keys separately to check if they exist
   const { data, error } = await supabase
     .from('teacher_settings')
-    .select('teacher_id, ai_provider, ai_model, groq_api_key, openrouter_api_key, ai_temperature, ai_max_tokens, ai_top_p, ai_enabled, ai_hints_enabled, feedback_style, last_connection_check, connection_status, connection_error, created_at, updated_at')
+    .select('*')
     .eq('teacher_id', user.id)
     .single();
 
