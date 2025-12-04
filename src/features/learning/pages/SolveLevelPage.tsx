@@ -26,8 +26,6 @@ export function SolveLevelPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [code, setCode] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   const [running, setRunning] = useState(false);
   const [executionResult, setExecutionResult] = useState<ExecutionResponse | null>(null);
   const [aiFeedback, setAiFeedback] = useState<AIFeedbackResponse | null>(null);
@@ -43,8 +41,19 @@ export function SolveLevelPage() {
   const [consecutiveErrors, setConsecutiveErrors] = useState(0);
   const [totalCompleted, setTotalCompleted] = useState(0);
 
+  // Notification for functionality change
+  const [showFunctionalityNotification, setShowFunctionalityNotification] = useState(false);
+
   // Character hook
   const { showFeedbackCharacter } = useSubmissionCharacter(user?.id || '');
+
+  // Check if user has seen the functionality notification
+  useEffect(() => {
+    const hasSeenNotification = localStorage.getItem('hasSeenButtonFunctionalityChange');
+    if (!hasSeenNotification) {
+      setShowFunctionalityNotification(true);
+    }
+  }, []);
 
   // Reset state when levelId changes
   useEffect(() => {
@@ -165,34 +174,47 @@ export function SolveLevelPage() {
     setShowHistory(false);
   };
 
-  const handleSaveCode = async () => {
-    if (!levelId || !code.trim() || !user) return;
-
-    try {
-      setSaving(true);
-      setSaveStatus('idle');
-      await createSubmission({
-        user_id: user.id,
-        level_id: levelId,
-        code: code.trim(),
-        status: 'pending'
-      });
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch (err) {
-      setSaveStatus('error');
-      console.error('Failed to save submission:', err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleRunCode = async () => {
+  // Simple run - just execute code without tests or AI feedback
+  const handleSimpleRun = async () => {
     if (!level || !code.trim()) return;
 
     try {
       setRunning(true);
       setExecutionResult(null);
+      setAiFeedback(null);
+      setLoadingAI(false);
+
+      // Just execute the code without test cases
+      const result = await executeCode({
+        language: level.language,
+        code: code.trim()
+      });
+
+      setExecutionResult(result);
+    } catch (err) {
+      console.error('Failed to execute code:', err);
+      setExecutionResult({
+        success: false,
+        results: {
+          stdout: '',
+          stderr: err instanceof Error ? err.message : 'Ошибка выполнения кода',
+          exitCode: 1
+        },
+        error: err instanceof Error ? err.message : 'Ошибка выполнения кода'
+      });
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  // Submit answer - run tests, get AI feedback, save submission (counts as attempt)
+  const handleSubmitAnswer = async () => {
+    if (!level || !code.trim()) return;
+
+    try {
+      setRunning(true);
+      setExecutionResult(null);
+      setAiFeedback(null);
       setLoadingAI(false);
 
       if (level.test_cases && level.test_cases.length > 0) {
@@ -498,18 +520,20 @@ export function SolveLevelPage() {
         {/* Actions */}
         <div className="flex items-center gap-3 sticky bottom-0 bg-learning-bg pt-2">
           <button
-            onClick={handleRunCode}
+            onClick={handleSimpleRun}
             disabled={running || !code.trim()}
-            className="flex-1 px-6 py-3 bg-learning-accent text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-center"
+            className="px-6 py-3 bg-learning-surface text-learning-text rounded-lg hover:bg-learning-muted/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            title="Просто запустить код и проверить на ошибки"
           >
-            {running ? '⏳ Выполнение...' : '▶️ Запустить код'}
+            {running ? '⏳ Выполнение...' : '▶️ Запустить'}
           </button>
           <button
-            onClick={handleSaveCode}
-            disabled={saving || !code.trim()}
-            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            onClick={handleSubmitAnswer}
+            disabled={running || !code.trim()}
+            className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-center"
+            title="Отправить решение на проверку"
           >
-            {saving ? '💾 Сохранение...' : '💾 Сохранить'}
+            {running ? '⏳ Проверка...' : '✅ Ответить'}
           </button>
           <button
             onClick={loadHistory}
@@ -518,9 +542,6 @@ export function SolveLevelPage() {
           >
             📜 История
           </button>
-          {saveStatus === 'saved' && (
-            <div className="text-sm text-green-400">✓</div>
-          )}
         </div>
 
         {/* Execution Results */}
@@ -859,6 +880,64 @@ export function SolveLevelPage() {
             />
           )}
         </Modal>
+      )}
+
+      {/* ===== FUNCTIONALITY CHANGE NOTIFICATION ===== */}
+      {showFunctionalityNotification && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-learning-surface border-2 border-learning-accent rounded-lg p-6 max-w-lg w-full shadow-2xl">
+            <div className="text-center mb-4">
+              <div className="text-5xl mb-3">🎉</div>
+              <h2 className="text-2xl font-bold text-learning-accent mb-2">
+                Важное обновление!
+              </h2>
+            </div>
+
+            <div className="space-y-4 text-learning-text">
+              <p className="text-base">
+                Мы изменили работу кнопок для более удобной работы:
+              </p>
+
+              <div className="bg-learning-bg border border-learning-muted/20 rounded-lg p-4 space-y-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xl">▶️</span>
+                    <span className="font-bold text-learning-text">Запустить</span>
+                  </div>
+                  <p className="text-sm text-learning-muted ml-7">
+                    Просто запускает вашу программу и показывает результат или ошибки.
+                    <strong className="text-learning-accent"> Не засчитывается в попытки.</strong>
+                  </p>
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xl">✅</span>
+                    <span className="font-bold text-green-400">Ответить</span>
+                  </div>
+                  <p className="text-sm text-learning-muted ml-7">
+                    Отправляет решение на проверку, запускает тесты и получает помощь от AI помощника.
+                    <strong className="text-green-400"> Засчитывается в попытки.</strong>
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-sm text-learning-muted italic">
+                💡 Совет: Используйте "Запустить" для тестирования кода, а "Ответить" — когда готовы проверить решение!
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowFunctionalityNotification(false);
+                localStorage.setItem('hasSeenButtonFunctionalityChange', 'true');
+              }}
+              className="w-full mt-6 px-6 py-3 bg-learning-accent text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+            >
+              Понятно, спасибо!
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
