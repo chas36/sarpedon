@@ -26,6 +26,12 @@ import { EntranceTestResultsPage } from './features/entrance-test/pages/Entrance
 import { EntranceTestManagePage } from './features/entrance-test/pages/EntranceTestManagePage';
 import { EntranceTestEditorPage } from './features/entrance-test/pages/EntranceTestEditorPage';
 import { EditorLevelsListPage, SimpleLevelEditorPage } from './features/editor/pages';
+import { DisplayLayout } from './features/display/components/DisplayLayout';
+import { DisplayDashboard } from './features/display/pages/DisplayDashboard';
+import { DisplayStudentsPage } from './features/display/pages/DisplayStudentsPage';
+import { DisplayStatsPage } from './features/display/pages/DisplayStatsPage';
+import { DisplayLessonPage } from './features/display/pages/DisplayLessonPage';
+import { DisplayAuthorsPage } from './features/display/pages/DisplayAuthorsPage';
 import { useAuthStore } from './features/auth/store/authStore';
 import { getCurrentUser, getProfile } from './features/auth/api/authApi';
 import { Spinner } from './shared/components/ui';
@@ -154,6 +160,24 @@ function App() {
           }
         />
 
+        {/* Display Routes */}
+        <Route
+          path="/display/*"
+          element={
+            <RoleGuard allowedRoles={['display']}>
+              <DisplayLayout>
+                <Routes>
+                  <Route index element={<DisplayDashboard />} />
+                  <Route path="students" element={<DisplayStudentsPage />} />
+                  <Route path="stats" element={<DisplayStatsPage />} />
+                  <Route path="lesson" element={<DisplayLessonPage />} />
+                  <Route path="authors" element={<DisplayAuthorsPage />} />
+                </Routes>
+              </DisplayLayout>
+            </RoleGuard>
+          }
+        />
+
         {/* Root redirect based on role */}
         <Route
           path="/"
@@ -183,6 +207,10 @@ function RoleRedirect() {
 
   if (role === 'teacher') {
     return <Navigate to="/teacher" replace />;
+  }
+
+  if (role === 'display') {
+    return <Navigate to="/display" replace />;
   }
 
   // Fallback to login if role is not set
