@@ -63,8 +63,6 @@ export function SolveLevelPage() {
     setCode('');
     setRunning(false);
     setLoadingAI(false);
-    setSaving(false);
-    setSaveStatus('idle');
     setError(null);
 
     // Load new level data
