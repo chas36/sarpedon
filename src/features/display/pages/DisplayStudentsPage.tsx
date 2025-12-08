@@ -56,6 +56,9 @@ export function DisplayStudentsPage() {
                 Логин
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-learning-text">
+                Пароль
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-learning-text">
                 Имя
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-learning-text">
@@ -68,6 +71,9 @@ export function DisplayStudentsPage() {
               <tr key={student.id} className="hover:bg-learning-bg/50 transition-colors">
                 <td className="px-6 py-4 text-learning-text font-mono">
                   {student.login}
+                </td>
+                <td className="px-6 py-4 text-learning-text font-mono">
+                  {student.password}
                 </td>
                 <td className="px-6 py-4 text-learning-text">
                   {student.fullName || `${student.firstName} ${student.lastName}`}

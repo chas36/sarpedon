@@ -11,6 +11,7 @@ export interface ClassStats {
 export interface StudentListItem {
   id: string;
   login: string;
+  password: string;
   firstName: string | null;
   lastName: string | null;
   fullName: string | null;

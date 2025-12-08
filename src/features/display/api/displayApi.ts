@@ -26,16 +26,22 @@ export async function getAvailableClasses(): Promise<string[]> {
 export async function getClassStudents(className: string): Promise<StudentListItem[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, login, first_name, last_name, full_name, class, updated_at')
+    .select('id, generated_login, generated_password, first_name, last_name, full_name, class, updated_at')
     .eq('role', 'student')
     .eq('class', className)
-    .order('login');
+    .order('generated_login');
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error fetching students:', error);
+    throw error;
+  }
+
+  console.log('Students data:', data);
 
   return data.map(student => ({
     id: student.id,
-    login: student.login || '',
+    login: student.generated_login || '',
+    password: student.generated_password || '',
     firstName: student.first_name,
     lastName: student.last_name,
     fullName: student.full_name,
