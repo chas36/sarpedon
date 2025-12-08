@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { ClassSelector } from './ClassSelector';
+import { useAuthStore } from '@/features/auth/store/authStore';
+import { logout } from '@/features/auth/api/authApi';
 
 export function DisplayLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout: clearAuth } = useAuthStore();
   const [selectedClass, setSelectedClass] = useState<string | null>(() => {
     // Initialize from localStorage immediately
     return localStorage.getItem('displaySelectedClass');
@@ -18,6 +22,16 @@ export function DisplayLayout() {
   useEffect(() => {
     console.log('selectedClass changed:', selectedClass);
   }, [selectedClass]);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      clearAuth();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   // Save selected class to localStorage
   const handleClassChange = (className: string) => {
@@ -86,9 +100,17 @@ export function DisplayLayout() {
               onClassChange={handleClassChange}
             />
           </div>
-          <div className="flex items-center gap-2 text-sm text-learning-muted">
-            <span>🔄</span>
-            <span>Обновлено: {getTimeSinceUpdate()}</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm text-learning-muted">
+              <span>🔄</span>
+              <span>Обновлено: {getTimeSinceUpdate()}</span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 text-sm font-medium text-learning-muted hover:text-learning-text hover:bg-learning-muted/10 rounded-lg transition-colors"
+            >
+              Выйти
+            </button>
           </div>
         </header>
 
