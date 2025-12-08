@@ -4,16 +4,20 @@ import { ClassSelector } from './ClassSelector';
 
 export function DisplayLayout() {
   const location = useLocation();
-  const [selectedClass, setSelectedClass] = useState<string | null>(null);
+  const [selectedClass, setSelectedClass] = useState<string | null>(() => {
+    // Initialize from localStorage immediately
+    return localStorage.getItem('displaySelectedClass');
+  });
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-  // Load selected class from localStorage
+  // Debug logging
   useEffect(() => {
-    const saved = localStorage.getItem('displaySelectedClass');
-    if (saved) {
-      setSelectedClass(saved);
-    }
+    console.log('DisplayLayout mounted, selectedClass:', selectedClass);
   }, []);
+
+  useEffect(() => {
+    console.log('selectedClass changed:', selectedClass);
+  }, [selectedClass]);
 
   // Save selected class to localStorage
   const handleClassChange = (className: string) => {
