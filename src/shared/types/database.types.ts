@@ -1,4 +1,4 @@
-export type Role = 'teacher' | 'student';
+export type Role = 'teacher' | 'student' | 'editor' | 'display';
 
 export type Difficulty = number; // 1-10 scale, where 1 is easiest and 10 is hardest
 

@@ -162,21 +162,19 @@ function App() {
 
         {/* Display Routes */}
         <Route
-          path="/display/*"
+          path="/display"
           element={
             <RoleGuard allowedRoles={['display']}>
-              <DisplayLayout>
-                <Routes>
-                  <Route index element={<DisplayDashboard />} />
-                  <Route path="students" element={<DisplayStudentsPage />} />
-                  <Route path="stats" element={<DisplayStatsPage />} />
-                  <Route path="lesson" element={<DisplayLessonPage />} />
-                  <Route path="authors" element={<DisplayAuthorsPage />} />
-                </Routes>
-              </DisplayLayout>
+              <DisplayLayout />
             </RoleGuard>
           }
-        />
+        >
+          <Route index element={<DisplayDashboard />} />
+          <Route path="students" element={<DisplayStudentsPage />} />
+          <Route path="stats" element={<DisplayStatsPage />} />
+          <Route path="lesson" element={<DisplayLessonPage />} />
+          <Route path="authors" element={<DisplayAuthorsPage />} />
+        </Route>
 
         {/* Root redirect based on role */}
         <Route
