@@ -12,6 +12,8 @@ interface DisplayContext {
 export function DisplayDashboard() {
   const { selectedClass } = useOutletContext<DisplayContext>();
 
+  console.log('DisplayDashboard rendering, selectedClass:', selectedClass);
+
   return (
     <div className="space-y-6">
       <div>
