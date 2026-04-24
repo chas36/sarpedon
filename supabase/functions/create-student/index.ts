@@ -8,6 +8,7 @@ import { checkRateLimit, RATE_LIMITS } from '../_shared/ratelimit.ts'
 const allowedOrigins = [
   'https://sarpedon.app',
   'https://www.sarpedon.app',
+  'https://sarpedon.onrender.com',
   // Development origins (remove in production)
   'http://localhost:5173',
   'http://localhost:3000',
