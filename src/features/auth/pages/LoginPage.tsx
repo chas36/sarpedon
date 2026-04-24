@@ -2,10 +2,18 @@ import { LoginForm } from '../components/LoginForm';
 import { useAuth } from '../hooks/useAuth';
 import type { LoginCredentials } from '@/shared/types';
 
-const demoCredentials = {
-  login: 'demo_teacher',
-  password: 'DemoTeacher123',
-};
+const demoAccounts = [
+  {
+    label: 'Преподаватель',
+    login: 'demo_teacher',
+    password: 'DemoTeacher123',
+  },
+  {
+    label: 'Тестовый ученик',
+    login: 'МИЧИГАН558',
+    password: 'МИЧИГАН558',
+  },
+];
 
 export function LoginPage() {
   const { handleLogin, loading, error } = useAuth();
@@ -42,12 +50,19 @@ export function LoginPage() {
 
         <div className="rounded-xl border border-learning-accent/20 bg-learning-accent/10 p-4 text-sm text-learning-text">
           <p className="font-semibold">Демо-доступ для презентации</p>
-          <p className="mt-2">
-            Логин: <code className="rounded bg-learning-surface px-2 py-1">{demoCredentials.login}</code>
-          </p>
-          <p className="mt-2">
-            Пароль: <code className="rounded bg-learning-surface px-2 py-1">{demoCredentials.password}</code>
-          </p>
+          <div className="mt-3 space-y-3">
+            {demoAccounts.map((account) => (
+              <div key={account.login} className="rounded-lg bg-learning-surface/60 p-3">
+                <p className="font-medium">{account.label}</p>
+                <p className="mt-2">
+                  Логин: <code className="rounded bg-learning-surface px-2 py-1">{account.login}</code>
+                </p>
+                <p className="mt-2">
+                  Пароль: <code className="rounded bg-learning-surface px-2 py-1">{account.password}</code>
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Footer */}
