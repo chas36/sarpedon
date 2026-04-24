@@ -4,7 +4,7 @@
 -- Demo credentials:
 --   Login:    demo_teacher
 --   Email:    demo-teacher@sarpedon.local
---   Password: DemoTeacher123!
+--   Password: DemoTeacher123
 
 DO $$
 DECLARE
@@ -42,7 +42,7 @@ BEGIN
     UPDATE auth.users
     SET
       email = 'demo-teacher@sarpedon.local',
-      encrypted_password = crypt('DemoTeacher123!', gen_salt('bf')),
+      encrypted_password = crypt('DemoTeacher123', gen_salt('bf')),
       email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
       aud = 'authenticated',
       role = 'authenticated',
@@ -78,7 +78,7 @@ BEGIN
       'authenticated',
       'authenticated',
       'demo-teacher@sarpedon.local',
-      crypt('DemoTeacher123!', gen_salt('bf')),
+      crypt('DemoTeacher123', gen_salt('bf')),
       NOW(),
       jsonb_build_object(
         'provider', 'email',

@@ -50,7 +50,7 @@
 После запуска будут доступны данные для входа:
 - Login: `demo_teacher`
 - Email: `demo-teacher@sarpedon.local`
-- Password: `DemoTeacher123!`
+- Password: `DemoTeacher123`
 
 Скрипт идемпотентный: его можно запускать повторно, он обновит пароль и профиль без создания дублей.
 

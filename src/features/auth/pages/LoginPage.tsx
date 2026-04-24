@@ -4,7 +4,7 @@ import type { LoginCredentials } from '@/shared/types';
 
 const demoCredentials = {
   login: 'demo_teacher',
-  password: 'DemoTeacher123!',
+  password: 'DemoTeacher123',
 };
 
 export function LoginPage() {
