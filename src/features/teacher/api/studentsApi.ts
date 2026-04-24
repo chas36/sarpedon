@@ -1,16 +1,43 @@
 import { supabase } from '@/shared/lib/supabase';
 import type { Profile } from '@/shared/types';
 import { generateUniqueLogin } from '../utils/loginGenerator';
+import { getTeacherOwnedClassNames } from './teacherScope';
+
+async function getAccessibleStudent(studentId: string): Promise<Profile> {
+  const ownedClasses = await getTeacherOwnedClassNames();
+
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', studentId)
+    .eq('role', 'student')
+    .single();
+
+  if (error) throw error;
+
+  if (!profile.class || !ownedClasses.includes(profile.class)) {
+    throw new Error('Нет доступа к этому ученику');
+  }
+
+  return profile;
+}
 
 /**
  * Get all students (for teachers)
  * Returns all profiles with role='student' (some may have is_editor=true)
  */
 export async function getAllStudents(): Promise<Profile[]> {
+  const ownedClasses = await getTeacherOwnedClassNames();
+
+  if (ownedClasses.length === 0) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('role', 'student')
+    .in('class', ownedClasses)
     .order('last_name', { ascending: true });
 
   if (error) throw error;
@@ -21,11 +48,18 @@ export async function getAllStudents(): Promise<Profile[]> {
  * Get all student editors (students with is_editor=true)
  */
 export async function getEditorStudents(): Promise<Profile[]> {
+  const ownedClasses = await getTeacherOwnedClassNames();
+
+  if (ownedClasses.length === 0) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('role', 'student')
     .eq('is_editor', true)
+    .in('class', ownedClasses)
     .order('last_name', { ascending: true });
 
   if (error) throw error;
@@ -36,6 +70,12 @@ export async function getEditorStudents(): Promise<Profile[]> {
  * Get students by class
  */
 export async function getStudentsByClass(className: string): Promise<Profile[]> {
+  const ownedClasses = await getTeacherOwnedClassNames();
+
+  if (!ownedClasses.includes(className)) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -59,14 +99,7 @@ export interface StudentWithProgress extends Profile {
 }
 
 export async function getStudentWithProgress(studentId: string): Promise<StudentWithProgress> {
-  // Get student profile
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', studentId)
-    .single();
-
-  if (profileError) throw profileError;
+  const profile = await getAccessibleStudent(studentId);
 
   // Get progress statistics
   const { data: progressData, error: progressError } = await supabase
@@ -108,6 +141,8 @@ export async function getStudentWithProgress(studentId: string): Promise<Student
  * Get student's submissions for a specific level
  */
 export async function getStudentLevelSubmissions(studentId: string, levelId: string) {
+  await getAccessibleStudent(studentId);
+
   const { data, error } = await supabase
     .from('submissions')
     .select('*')
@@ -123,17 +158,7 @@ export async function getStudentLevelSubmissions(studentId: string, levelId: str
  * Get all unique classes
  */
 export async function getAllClasses(): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('class')
-    .eq('role', 'student')
-    .not('class', 'is', null);
-
-  if (error) throw error;
-
-  // Get unique classes
-  const classes = [...new Set(data?.map(p => p.class).filter(Boolean))];
-  return classes.sort();
+  return getTeacherOwnedClassNames();
 }
 
 // ============================================================
@@ -215,6 +240,8 @@ export async function updateStudent(
     className?: string;
   }
 ): Promise<Profile> {
+  await getAccessibleStudent(id);
+
   const updates: any = {};
   if (data.firstName) updates.first_name = data.firstName;
   if (data.lastName) updates.last_name = data.lastName;
@@ -250,6 +277,8 @@ export async function updateStudent(
  * Edge Function использует Service Role Key для удаления auth пользователей
  */
 export async function deleteStudent(id: string): Promise<void> {
+  await getAccessibleStudent(id);
+
   // Call Edge Function to delete student
   const { data: result, error } = await supabase.functions.invoke('delete-student', {
     body: { studentId: id },
@@ -263,14 +292,7 @@ export async function deleteStudent(id: string): Promise<void> {
  * Reset password (password = login)
  */
 export async function resetPassword(id: string): Promise<void> {
-  // Get student's login
-  const { data: student, error: fetchError } = await supabase
-    .from('profiles')
-    .select('generated_login')
-    .eq('id', id)
-    .single();
-
-  if (fetchError) throw fetchError;
+  const student = await getAccessibleStudent(id);
   if (!student.generated_login) throw new Error('Student has no login');
 
   // Update password in auth
@@ -297,6 +319,8 @@ export async function updateCredentials(
   login: string,
   password: string
 ): Promise<void> {
+  await getAccessibleStudent(id);
+
   // Update password in auth
   const { error: authError } = await supabase.auth.admin.updateUserById(id, {
     password,
@@ -323,6 +347,8 @@ export async function toggleEditorFlag(
   id: string,
   isEditor: boolean
 ): Promise<Profile> {
+  await getAccessibleStudent(id);
+
   const { data: profile, error } = await supabase
     .from('profiles')
     .update({ is_editor: isEditor })

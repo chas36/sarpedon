@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { supabase } from '@/shared/lib/supabase';
+import { getCurrentTeacherId } from '../teacherScope';
 import {
   getAllClasses,
   createClass,
@@ -15,9 +16,14 @@ vi.mock('@/shared/lib/supabase', () => ({
   },
 }));
 
+vi.mock('../teacherScope', () => ({
+  getCurrentTeacherId: vi.fn(),
+}));
+
 describe('classesApi', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getCurrentTeacherId).mockResolvedValue('teacher-1');
   });
 
   describe('getAllClasses', () => {
@@ -27,24 +33,51 @@ describe('classesApi', () => {
         { id: '2', name: '10Б' },
       ];
 
-      const mockChain = {
+      const classesChain = {
         select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
         order: vi.fn().mockResolvedValue({ data: mockClasses, error: null }),
       };
 
-      vi.mocked(supabase.from).mockReturnValue(mockChain as any);
+      const countChainA = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+      };
+
+      countChainA.eq
+        .mockReturnValueOnce(countChainA)
+        .mockResolvedValueOnce({ count: 12, error: null });
+
+      const countChainB = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+      };
+
+      countChainB.eq
+        .mockReturnValueOnce(countChainB)
+        .mockResolvedValueOnce({ count: 8, error: null });
+
+      vi.mocked(supabase.from)
+        .mockReturnValueOnce(classesChain as any)
+        .mockReturnValueOnce(countChainA as any)
+        .mockReturnValueOnce(countChainB as any);
 
       const result = await getAllClasses();
 
       expect(supabase.from).toHaveBeenCalledWith('classes');
-      expect(mockChain.select).toHaveBeenCalledWith('*');
-      expect(mockChain.order).toHaveBeenCalledWith('name', { ascending: true });
-      expect(result).toEqual(mockClasses);
+      expect(classesChain.select).toHaveBeenCalledWith('*');
+      expect(classesChain.eq).toHaveBeenCalledWith('created_by', 'teacher-1');
+      expect(classesChain.order).toHaveBeenCalledWith('name', { ascending: true });
+      expect(result).toEqual([
+        { id: '1', name: '10А', student_count: 12 },
+        { id: '2', name: '10Б', student_count: 8 },
+      ]);
     });
 
     it('should throw error on failure', async () => {
       const mockChain = {
         select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
         order: vi.fn().mockResolvedValue({ data: null, error: new Error('DB error') }),
       };
 
@@ -69,7 +102,7 @@ describe('classesApi', () => {
       const result = await createClass('10А');
 
       expect(supabase.from).toHaveBeenCalledWith('classes');
-      expect(mockChain.insert).toHaveBeenCalledWith({ name: '10А' });
+      expect(mockChain.insert).toHaveBeenCalledWith({ name: '10А', created_by: 'teacher-1' });
       expect(result).toEqual(mockClass);
     });
   });

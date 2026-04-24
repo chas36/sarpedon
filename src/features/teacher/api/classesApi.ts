@@ -1,4 +1,5 @@
 import { supabase } from '@/shared/lib/supabase';
+import { getCurrentTeacherId } from './teacherScope';
 
 export interface Class {
   id: string;
@@ -13,10 +14,13 @@ export interface Class {
  * Get all classes ordered by name with student count
  */
 export async function getAllClasses(): Promise<Class[]> {
+  const teacherId = await getCurrentTeacherId();
+
   // Get all classes
   const { data: classes, error: classesError } = await supabase
     .from('classes')
     .select('*')
+    .eq('created_by', teacherId)
     .order('name', { ascending: true });
 
   if (classesError) throw classesError;
@@ -40,9 +44,11 @@ export async function getAllClasses(): Promise<Class[]> {
  * Create new class
  */
 export async function createClass(name: string): Promise<Class> {
+  const teacherId = await getCurrentTeacherId();
+
   const { data, error } = await supabase
     .from('classes')
-    .insert({ name })
+    .insert({ name, created_by: teacherId })
     .select()
     .single();
 
@@ -54,10 +60,13 @@ export async function createClass(name: string): Promise<Class> {
  * Update class name
  */
 export async function updateClass(id: string, name: string): Promise<Class> {
+  const teacherId = await getCurrentTeacherId();
+
   const { data, error } = await supabase
     .from('classes')
     .update({ name })
     .eq('id', id)
+    .eq('created_by', teacherId)
     .select()
     .single();
 
@@ -69,10 +78,13 @@ export async function updateClass(id: string, name: string): Promise<Class> {
  * Delete class
  */
 export async function deleteClass(id: string): Promise<void> {
+  const teacherId = await getCurrentTeacherId();
+
   const { error } = await supabase
     .from('classes')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('created_by', teacherId);
 
   if (error) throw error;
 }

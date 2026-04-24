@@ -2,6 +2,11 @@ import { LoginForm } from '../components/LoginForm';
 import { useAuth } from '../hooks/useAuth';
 import type { LoginCredentials } from '@/shared/types';
 
+const demoCredentials = {
+  login: 'demo_teacher',
+  password: 'DemoTeacher123!',
+};
+
 export function LoginPage() {
   const { handleLogin, loading, error } = useAuth();
 
@@ -40,6 +45,16 @@ export function LoginPage() {
         {/* Login Form */}
         <div className="bg-learning-surface rounded-xl p-8 shadow-xl border border-learning-muted/10">
           <LoginForm onSubmit={onSubmit} loading={loading} error={error} />
+        </div>
+
+        <div className="rounded-xl border border-learning-accent/20 bg-learning-accent/10 p-4 text-sm text-learning-text">
+          <p className="font-semibold">Демо-доступ для презентации</p>
+          <p className="mt-2">
+            Логин: <code className="rounded bg-learning-surface px-2 py-1">{demoCredentials.login}</code>
+          </p>
+          <p className="mt-2">
+            Пароль: <code className="rounded bg-learning-surface px-2 py-1">{demoCredentials.password}</code>
+          </p>
         </div>
 
         {/* Footer */}

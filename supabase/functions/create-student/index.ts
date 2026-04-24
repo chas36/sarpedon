@@ -174,6 +174,31 @@ serve(async (req) => {
       )
     }
 
+    const { data: ownedClass, error: ownedClassError } = await supabase
+      .from('classes')
+      .select('id')
+      .eq('name', className)
+      .eq('created_by', user.id)
+      .maybeSingle()
+
+    if (ownedClassError) {
+      console.error('Class ownership check error:', ownedClassError)
+      throw new Error('Failed to verify class access')
+    }
+
+    if (!ownedClass) {
+      return new Response(
+        JSON.stringify({
+          error: 'Forbidden',
+          message: 'You can only create students in your own classes'
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
     // SECURITY: Generate secure password if not provided
     const generatedPassword = password || generateSecurePassword()
 

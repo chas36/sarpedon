@@ -307,6 +307,11 @@ export function StudentsPage() {
       {sortedStudents.length === 0 ? (
         <div className="bg-admin-surface rounded-lg p-12 text-center border border-admin-muted/10">
           <p className="text-admin-muted">Студенты не найдены</p>
+          {classes.length === 0 && (
+            <p className="text-admin-muted text-sm mt-2">
+              У этого преподавателя пока нет своих классов. Сначала создайте класс, затем добавьте учеников.
+            </p>
+          )}
           {(selectedClass !== 'all' || selectedProficiency !== 'all' || showNeedsHelpOnly) && (
             <Button
               variant="ghost"

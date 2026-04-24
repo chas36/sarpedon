@@ -160,7 +160,7 @@ serve(async (req) => {
     // SECURITY: Verify the student exists and is actually a student
     const { data: studentProfile, error: studentCheckError } = await supabaseAdmin
       .from('profiles')
-      .select('id, role')
+      .select('id, role, class')
       .eq('id', studentId)
       .single()
 
@@ -183,6 +183,31 @@ serve(async (req) => {
         JSON.stringify({
           error: 'Forbidden',
           message: 'Cannot delete non-student users'
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    const { data: ownedClass, error: ownedClassError } = await supabase
+      .from('classes')
+      .select('id')
+      .eq('name', studentProfile.class ?? '')
+      .eq('created_by', user.id)
+      .maybeSingle()
+
+    if (ownedClassError) {
+      console.error('Class ownership check error:', ownedClassError)
+      throw new Error('Failed to verify student ownership')
+    }
+
+    if (!ownedClass) {
+      return new Response(
+        JSON.stringify({
+          error: 'Forbidden',
+          message: 'You can only delete students from your own classes'
         }),
         {
           status: 403,
