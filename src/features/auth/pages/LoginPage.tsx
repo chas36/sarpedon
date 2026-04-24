@@ -22,15 +22,8 @@ export function LoginPage() {
   return (
     <div className="min-h-screen bg-learning-bg flex items-center justify-center px-4">
       <div className="max-w-md w-full space-y-8">
-        {/* Logo/Branding */}
+        {/* Branding */}
         <div className="text-center">
-          <div className="flex justify-center mb-4">
-            <img
-              src="/logo.png"
-              alt="Sarpedon"
-              className="h-20 w-20"
-            />
-          </div>
           <h1 className="text-4xl font-bold text-learning-text mb-2">
             Sarpedon
           </h1>
