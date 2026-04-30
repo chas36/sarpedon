@@ -2,18 +2,7 @@ import { LoginForm } from '../components/LoginForm';
 import { useAuth } from '../hooks/useAuth';
 import type { LoginCredentials } from '@/shared/types';
 
-const demoAccounts = [
-  {
-    label: 'Преподаватель',
-    login: 'demo_teacher',
-    password: 'DemoTeacher123',
-  },
-  {
-    label: 'Тестовый ученик',
-    login: 'МИЧИГАН558',
-    password: 'МИЧИГАН558',
-  },
-];
+
 
 export function LoginPage() {
   const { handleLogin, loading, error } = useAuth();
