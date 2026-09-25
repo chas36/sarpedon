@@ -69,6 +69,7 @@
 - **[React Router 7](https://reactrouter.com/)** — маршрутизация
 - **[Tailwind CSS 3.4](https://tailwindcss.com/)** — utility-first CSS
 - **[Monaco Editor](https://microsoft.github.io/monaco-editor/)** — редактор кода (от VS Code)
+- **[1С:Элемент Скрипт](docs/ELEMENT_SCRIPT_SUPPORT.md)** — задания, подсветка `.sbsl` и серверный маршрут выполнения
 - **[Zustand](https://zustand-demo.pmnd.rs/)** — управление состоянием
 - **[Framer Motion](https://www.framer.com/motion/)** — анимации персонажей
 

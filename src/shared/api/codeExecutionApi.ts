@@ -6,9 +6,12 @@
 import type {
   ExecutionRequest,
   ExecutionResponse,
+  ExecutionResult,
   TestCase,
   TestResult
 } from '@/shared/types';
+import { supabase } from '@/shared/lib/supabase';
+import { isElementScriptLanguage } from '@/shared/config/programmingLanguages';
 
 const PISTON_API_URL = 'https://emkc.org/api/v2/piston/execute';
 
@@ -41,6 +44,10 @@ export function mapLanguage(language: string): string {
 export async function executeCode(
   request: ExecutionRequest
 ): Promise<ExecutionResponse> {
+  if (isElementScriptLanguage(request.language)) {
+    return executeElementScript(request);
+  }
+
   try {
     const response = await fetch(PISTON_API_URL, {
       method: 'POST',
@@ -87,6 +94,42 @@ export async function executeCode(
   } catch (error) {
     throw error;
   }
+}
+
+async function executeElementScript(
+  request: ExecutionRequest
+): Promise<ExecutionResponse> {
+  const { data, error } = await supabase.functions.invoke('execute-element-script', {
+    body: {
+      language: 'elementscript',
+      code: request.code,
+      stdin: request.stdin || '',
+    },
+  });
+
+  if (error) {
+    let message = error.message;
+    const context = 'context' in error ? error.context : undefined;
+
+    if (context instanceof Response) {
+      try {
+        const body = await context.clone().json();
+        if (typeof body?.message === 'string') {
+          message = body.message;
+        }
+      } catch {
+        // Keep the SDK error message when the response is not JSON.
+      }
+    }
+
+    throw new Error(`Не удалось запустить 1С:Элемент Скрипт: ${message}`);
+  }
+
+  if (!data?.results || typeof data.results.exitCode !== 'number') {
+    throw new Error('Сервис 1С:Элемент Скрипт вернул некорректный ответ');
+  }
+
+  return data as ExecutionResponse;
 }
 
 /**

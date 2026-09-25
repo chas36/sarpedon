@@ -1,6 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as codeExecutionApi from '../codeExecutionApi';
 import type { TestCase } from '@/shared/types';
+import { supabase } from '@/shared/lib/supabase';
+
+vi.mock('@/shared/lib/supabase', () => ({
+  supabase: {
+    functions: {
+      invoke: vi.fn()
+    }
+  }
+}));
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -11,6 +20,50 @@ describe('codeExecutionApi', () => {
   });
 
   describe('executeCode', () => {
+    it('routes Element Script execution through the authenticated Edge Function', async () => {
+      vi.mocked(supabase.functions.invoke).mockResolvedValueOnce({
+        data: {
+          success: true,
+          results: {
+            stdout: 'Привет!\n',
+            stderr: '',
+            exitCode: 0
+          }
+        },
+        error: null
+      });
+
+      const result = await codeExecutionApi.executeCode({
+        language: 'elementscript',
+        code: 'метод Скрипт()\n  Сообщить("Привет!");\n;'
+      });
+
+      expect(supabase.functions.invoke).toHaveBeenCalledWith(
+        'execute-element-script',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            language: 'elementscript',
+            stdin: ''
+          })
+        })
+      );
+      expect(fetch).not.toHaveBeenCalled();
+      expect(result.success).toBe(true);
+      expect(result.results.stdout).toBe('Привет!\n');
+    });
+
+    it('rejects an invalid Element Script runner response', async () => {
+      vi.mocked(supabase.functions.invoke).mockResolvedValueOnce({
+        data: { success: true },
+        error: null
+      });
+
+      await expect(codeExecutionApi.executeCode({
+        language: 'sbsl',
+        code: 'метод Скрипт()\n;'
+      })).rejects.toThrow('вернул некорректный ответ');
+    });
+
     it('should execute Python code successfully', async () => {
       const mockResponse = {
         run: {

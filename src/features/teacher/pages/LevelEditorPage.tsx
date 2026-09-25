@@ -5,6 +5,7 @@ import { getAllClasses } from '@/features/teacher/api/classesApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button, Spinner } from '@/shared/components/ui';
 import type { TestCase, Class } from '@/shared/types';
+import { PROGRAMMING_LANGUAGES } from '@/shared/config/programmingLanguages';
 import { getDifficultyLabel, getDifficultyColor } from '../utils/difficultyUtils';
 
 export function LevelEditorPage() {
@@ -283,10 +284,11 @@ export function LevelEditorPage() {
                 onChange={(e) => setFormData({ ...formData, language: e.target.value })}
                 className="w-full px-3 py-2 bg-admin-bg border border-admin-muted/20 rounded-lg text-admin-text focus:outline-none focus:ring-2 focus:ring-admin-accent"
               >
-                <option value="python">Python</option>
-                <option value="javascript">JavaScript</option>
-                <option value="java">Java</option>
-                <option value="cpp">C++</option>
+                {PROGRAMMING_LANGUAGES.map((language) => (
+                  <option key={language.value} value={language.value}>
+                    {language.label}
+                  </option>
+                ))}
               </select>
             </div>
 

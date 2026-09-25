@@ -68,6 +68,13 @@ describe('CodeEditor', () => {
     expect(textarea).toHaveAttribute('data-language', 'javascript');
   });
 
+  it('should normalize an sbsl alias to the Element Script language', () => {
+    render(<CodeEditor value="" onChange={() => {}} language="sbsl" />);
+
+    const textarea = screen.getByTestId('editor-textarea');
+    expect(textarea).toHaveAttribute('data-language', 'elementscript');
+  });
+
   it('should use dark theme by default', () => {
     render(<CodeEditor value="" onChange={() => {}} />);
 

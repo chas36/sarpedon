@@ -4,6 +4,7 @@ import { getLevelById, createLevel, updateLevel, type CreateLevelData } from '@/
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button, Spinner } from '@/shared/components/ui';
 import type { TestCase } from '@/shared/types';
+import { PROGRAMMING_LANGUAGES } from '@/shared/config/programmingLanguages';
 
 // Упрощенный редактор для студентов-редакторов (без AI, продвинутых функций)
 export function SimpleLevelEditorPage() {
@@ -310,10 +311,11 @@ export function SimpleLevelEditorPage() {
               onChange={(e) => handleInputChange('language', e.target.value)}
               className="w-full px-4 py-2 bg-learning-bg border border-learning-muted/20 rounded-lg text-learning-text focus:outline-none focus:ring-2 focus:ring-learning-accent"
             >
-              <option value="python">Python</option>
-              <option value="javascript">JavaScript</option>
-              <option value="java">Java</option>
-              <option value="cpp">C++</option>
+              {PROGRAMMING_LANGUAGES.map((language) => (
+                <option key={language.value} value={language.value}>
+                  {language.label}
+                </option>
+              ))}
             </select>
           </div>
 
